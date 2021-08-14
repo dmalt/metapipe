@@ -2,6 +2,8 @@ from pytest import fixture
 
 import mne
 import numpy as np
+from numpy.testing import assert_allclose
+
 from raw_processors import BandPassFilter, ConcatRaws, Resample, FifReader
 
 
@@ -19,11 +21,11 @@ def simple_raw_factory():
 
 
 @fixture
-def saved_fif_file(simple_raw_factory, tmp_path):
+def saved_fif_fpath_and_object(simple_raw_factory, tmp_path):
     raw = simple_raw_factory(4, 300, 32)
     savepath = tmp_path / "raw.fif"
     raw.save(savepath)
-    yield savepath
+    yield savepath, raw
     savepath.unlink()
 
 
@@ -69,6 +71,8 @@ def test_resample(simple_raw_factory):
     assert result.info["sfreq"] == 150
 
 
-def test_fif_reader_reads_file(saved_fif_file):
+def test_fif_reader_reads_same_data(saved_fif_fpath_and_object):
     reader = FifReader()
-    reader.read(saved_fif_file)
+    loaded_raw = reader.read(saved_fif_fpath_and_object[0])
+    saved_raw = saved_fif_fpath_and_object[1]
+    assert_allclose(loaded_raw.get_data(), saved_raw.get_data())
