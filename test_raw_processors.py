@@ -48,7 +48,7 @@ def test_concat_with_same_channels(simple_raw_factory):
     assert len(res.ch_names) == len(raw.ch_names)
 
 
-def test_concat_with_different_channels(simple_raw_factory):
+def test_cat_with_different_channels_intersects_channels(simple_raw_factory):
     raw1 = simple_raw_factory(1, 300, 33)
     raw2 = simple_raw_factory(1, 300, 43)
     cat = ConcatRaws()
