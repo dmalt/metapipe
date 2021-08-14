@@ -50,6 +50,7 @@ class BandPassFilter(RawProcessor):
 
 class ConcatRaws(RawProcessor):
     """Concatenate common channels from raw objects"""
+
     def run(self, *raws: Collection[BaseRaw]) -> BaseRaw:
         if len(raws) == 1:
             return raws[0]
@@ -109,12 +110,17 @@ class MneWriter(RawWriter):
 @dataclass
 class MneBidsWriter(RawWriter):
     """Write raw file together with BIDS metainfo"""
+
     pass
 
 
 @dataclass
 class RawProcessorsChain(FileIoNode):
-    """Read multiple raw objects, process them into one raw object and write"""
+    """
+    Read multiple raw objects, process them into one raw object and write
+
+    """
+
     raw_in_paths: Collection[PathLike]
     raw_out_path: PathLike
     reader: RawReader
