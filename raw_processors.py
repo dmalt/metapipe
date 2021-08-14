@@ -1,3 +1,26 @@
+"""
+Examples
+--------
+
+Create raw filtering chain
+
+>>> rd, wrt = FifReader(), MneWriter()
+>>> flt = BandPassFilter(config = {"l_freq": 1, "h_freq": 100})
+>>> filt_chain = RawProcessorsChain(["i.fif"], "o.fif", rd, [flt], wrt)
+>>> print(filt_chain.processors)
+[BandPassFilter(config={'l_freq': 1, 'h_freq': 100})]
+
+Create raw chain filtering and resampling
+
+>>> rd, wrt = FifReader(), MneWriter()
+>>> flt = BandPassFilter(config = {"l_freq": 1, "h_freq": 100})
+>>> rsmp = Resample()
+>>> filt_chain = RawProcessorsChain(["i.fif"], "o.fif", rd, [flt, rsmp], wrt)
+>>> print(filt_chain.processors)
+[BandPassFilter(config={'l_freq': 1, 'h_freq': 100}), Resample(config={})]
+
+"""
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from os import PathLike
@@ -113,3 +136,13 @@ class RawProcessorsChain(FileIoNode):
         for node in self.processors[1:]:
             intermediate_raw = node.run(intermediate_raw)
         return intermediate_raw
+
+
+def main():
+    import doctest
+
+    doctest.testmod()
+
+
+if __name__ == "__main__":
+    main()
