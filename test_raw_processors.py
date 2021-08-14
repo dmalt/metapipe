@@ -1,10 +1,17 @@
 from pytest import fixture
 
 import mne
+from mne.io import read_raw_fif
 import numpy as np
 from numpy.testing import assert_allclose
 
-from raw_processors import BandPassFilter, ConcatRaws, Resample, FifReader
+from raw_processors import (
+    BandPassFilter,
+    ConcatRaws,
+    Resample,
+    FifReader,
+    MneWriter,
+)
 
 
 @fixture
@@ -76,3 +83,12 @@ def test_fif_reader_reads_same_data(saved_fif_fpath_and_object):
     loaded_raw = reader.read(saved_fif_fpath_and_object[0])
     saved_raw = saved_fif_fpath_and_object[1]
     assert_allclose(loaded_raw.get_data(), saved_raw.get_data())
+
+
+def test_mne_writer_data_unchanged(simple_raw_factory, tmp_path):
+    raw = simple_raw_factory(1, 300, 32)
+    writer = MneWriter()
+    savepath = tmp_path / "raw.fif"
+    writer.write(raw, savepath)
+    loaded_raw = read_raw_fif(savepath)
+    assert_allclose(raw.get_data(), loaded_raw.get_data())
