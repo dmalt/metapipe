@@ -37,7 +37,7 @@ from nodes import FileIoNode
 class RawProcessor(ABC):
     @abstractmethod
     def run(self, raw_input: Union[BaseRaw, Collection[BaseRaw]]) -> BaseRaw:
-        pass
+        """Run processor"""
 
 
 @dataclass
@@ -79,7 +79,7 @@ class RawReader(ABC):
 
     @abstractmethod
     def read(self, path) -> BaseRaw:
-        pass
+        """Read in raw data"""
 
 
 @dataclass
@@ -96,7 +96,7 @@ class RawWriter(ABC):
 
     @abstractmethod
     def write(self, raw: BaseRaw, path: PathLike):
-        pass
+        """Write raw data to a filesystem"""
 
 
 @dataclass
@@ -110,8 +110,6 @@ class MneWriter(RawWriter):
 @dataclass
 class MneBidsWriter(RawWriter):
     """Write raw file together with BIDS metainfo"""
-
-    pass
 
 
 @dataclass
@@ -131,7 +129,7 @@ class RawProcessorsChain(FileIoNode):
         return [self.reader.read(p) for p in self.raw_in_paths]
 
     def _write_output(self, result):
-        self.writer.write(result, self.out_path)
+        self.writer.write(result, self.raw_out_path)
 
     def _process(self, in_objs):
         return self._run_processors(in_objs)
