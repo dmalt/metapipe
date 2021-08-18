@@ -54,7 +54,7 @@ def test_change_outermost_level_no_filter(tree_factory):
     tree = tree_factory("root", None)
     tree.append_level("sub", ("01",))
     tree.append_level("task", ("eo", "ec"))
-    tree.change_outermost_level("task", (None,), filt={})
+    tree.change_outermost_level((None,), filt={})
 
     keys = [e for e in tree.flatten_keys()]
     assert keys == [OrderedDict({"root": None, "sub": "01", "task": None})]
@@ -65,7 +65,7 @@ def test_change_outermost_level_filter(tree_factory):
     tree.append_level("sub", ("01", "emptyroom"))
     tree.append_level("task", ("eo",))
     tree.change_outermost_level(
-        "task", ("noise",), filt={"sub": lambda s: s == "emptyroom"}
+        ("noise",), filt={"sub": lambda s: s == "emptyroom"}
     )
     keys = [e for e in tree.flatten_keys()]
     assert keys == [
@@ -80,5 +80,5 @@ def test_change_outermost_level_with_nonexistent_filter_raises_exception(tree_fa
     tree.append_level("task", ("eo",))
     with raises(LevelError):
         tree.change_outermost_level(
-            "task", ("noise",), filt={"run": lambda s: s == "01"}
+            values=["noise"], filt={"run": lambda s: s == "01"}
         )

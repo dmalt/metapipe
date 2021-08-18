@@ -28,12 +28,13 @@ class ParamsTreeNode:
             for k in c.flatten_keys():
                 yield {self.level: self.value} | k
 
-    def _change_outermost_level(self, level_name, values, filt: dict):
+    def _change_outermost_level(self, values, filt: dict):
         if self._is_next_to_leaf_node():
+            level_name = self._children[0].level
             self._children = self._create_level(level_name, values)
         else:
             for c in filter(lambda c: c.level not in filt or filt[c.level](c.value), self.children):
-                c._change_outermost_level(level_name, values, filt)
+                c._change_outermost_level(values, filt)
 
     def _append_level(self, level_name, values):
         if self._is_leaf_node():
@@ -66,9 +67,9 @@ class ParamsTree(ParamsTreeNode):
         self._append_level(level_name, values)
         self._level_names.append(level_name)
 
-    def change_outermost_level(self, level_name, values, filt):
+    def change_outermost_level(self, values, filt):
         self._check_filter_levels(filt)
-        self._change_outermost_level(level_name, values, filt)
+        self._change_outermost_level(values, filt)
 
     def _check_filter_levels(self, filt):
         for level in filt:
