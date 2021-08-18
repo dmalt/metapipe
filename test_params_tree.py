@@ -42,7 +42,7 @@ def test_flatten_keys(tree_factory):
     subjects = ("01", "02", "emptyroom")
     level = "sub"
     tree.append_level(level, subjects)
-    flat_keys = [e for e in tree.flatten_keys()]
+    flat_keys = list(tree.flatten_keys())
     assert flat_keys == [
         OrderedDict({"root": None, "sub": "01"}),
         OrderedDict({"root": None, "sub": "02"}),
@@ -56,7 +56,7 @@ def test_change_outermost_level_no_filter(tree_factory):
     tree.append_level("task", ("eo", "ec"))
     tree.change_outermost_level((None,), filt={})
 
-    keys = [e for e in tree.flatten_keys()]
+    keys = list(tree.flatten_keys())
     assert keys == [OrderedDict({"root": None, "sub": "01", "task": None})]
 
 
@@ -67,7 +67,7 @@ def test_change_outermost_level_filter(tree_factory):
     tree.change_outermost_level(
         ("noise",), filt={"sub": lambda s: s == "emptyroom"}
     )
-    keys = [e for e in tree.flatten_keys()]
+    keys = list(tree.flatten_keys())
     assert keys == [
         OrderedDict({"root": None, "sub": "01", "task": "eo"}),
         OrderedDict({"root": None, "sub": "emptyroom", "task": "noise"}),
