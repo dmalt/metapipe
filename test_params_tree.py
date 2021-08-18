@@ -2,7 +2,7 @@ from collections import OrderedDict
 
 from pytest import fixture, raises
 
-from params_tree import ParamsTree
+from params_tree import ParamsTree, LevelError
 
 
 @fixture
@@ -33,7 +33,7 @@ def test_add_single_layer_sets_children_and_appends_level_name(tree_factory):
 
 def test_appending_existing_layer_raises_exception(tree_factory):
     tree = tree_factory("root", None)
-    with raises(AttributeError):
+    with raises(LevelError):
         tree.append_level("root", (None,))
 
 
@@ -78,7 +78,7 @@ def test_change_outermost_level_with_nonexistent_filter_raises_exception(tree_fa
     tree = tree_factory("root", None)
     tree.append_level("sub", ("01", "emptyroom"))
     tree.append_level("task", ("eo",))
-    with raises(AttributeError):
+    with raises(LevelError):
         tree.change_outermost_level(
             "task", ("noise",), filt={"run": lambda s: s == "01"}
         )

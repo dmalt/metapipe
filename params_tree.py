@@ -3,6 +3,10 @@ from dataclasses import dataclass, field
 from typing import Any, Iterable, List
 
 
+class LevelError(Exception):
+    pass
+
+
 @dataclass
 class ParamsTreeNode:
     level: str
@@ -58,7 +62,7 @@ class ParamsTree(ParamsTreeNode):
 
     def append_level(self, level_name, values):
         if level_name in self.level_names:
-            raise AttributeError(f"Level '{level_name}' exists")
+            raise LevelError(f"Level '{level_name}' exists")
         self._append_level(level_name, values)
         self._level_names.append(level_name)
 
@@ -69,4 +73,4 @@ class ParamsTree(ParamsTreeNode):
     def _check_filter_levels(self, filt):
         for level in filt:
             if level not in self._level_names:
-                raise AttributeError(f"Level {level} not found")
+                raise LevelError(f"Level {level} not found")
