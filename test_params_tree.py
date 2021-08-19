@@ -14,7 +14,7 @@ def test_add_single_layer_sets_children_and_appends_level_name(tree):
     subjects = ("01", "02", "emptyroom")
     level = "sub"
     tree.append(level, subjects)
-    assert tree.level_names[-1] == level
+    assert tree.levels[-1] == level
     flat_keys = list(tree.flatten())
     assert flat_keys == [OrderedDict({"sub": s}) for s in subjects]
 
