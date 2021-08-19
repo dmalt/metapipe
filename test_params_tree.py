@@ -2,7 +2,13 @@ from collections import OrderedDict
 
 from pytest import fixture, raises
 
-from params_tree import ParamsTree, LevelError, FlatView
+from params_tree import (
+    ParamsTree,
+    LevelError,
+    FlatView,
+    ParamsNode,
+    ParamsTreeError,
+)
 
 
 @fixture
@@ -10,13 +16,18 @@ def tree():
     return ParamsTree()
 
 
+def test_params_node_getitem_raises_exception_when_no_item(tree):
+    with raises(ParamsTreeError):
+        tree.root["something"]
+
+
 def test_add_single_layer_sets_children_and_appends_level_name(tree):
     subjects = ("01", "02", "emptyroom")
     level = "sub"
     tree.append(level, subjects)
     assert tree.levels[-1] == level
-    flat_keys = FlatView().get(tree)
-    assert flat_keys == [OrderedDict({"sub": s}) for s in subjects]
+    for s in subjects:
+        assert tree.root[s] == ParamsNode(level, s)
 
 
 def test_appending_existing_layer_raises_exception(tree):
@@ -30,8 +41,7 @@ def test_change_outermost_level_no_filter(tree):
     tree.append("task", ("eo", "ec"))
     tree.change_last((None,))
 
-    keys = FlatView().get(tree)
-    assert keys == [OrderedDict({"sub": "01", "task": None})]
+    assert tree.root["01"][None] == ParamsNode("task", None)
 
 
 def test_change_outermost_level_filter(tree):

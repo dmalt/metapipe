@@ -24,12 +24,12 @@ Create raw chain filtering and resampling
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from os import PathLike
-from typing import Union
-from collections.abc import Collection
+from typing import Union, List
+from collections.abc import Sequence, Collection
 
-from mne import concatenate_raws
-from mne.io import Raw, read_raw_fif
-from mne.io.base import BaseRaw
+from mne import concatenate_raws  # type: ignore
+from mne.io import Raw, read_raw_fif  # type: ignore
+from mne.io.base import BaseRaw  # type: ignore
 
 from nodes import FileIoNode
 
@@ -73,12 +73,11 @@ class Resample(RawProcessor):
         return raw.copy().resample(**self.config)
 
 
-@dataclass
 class RawReader(ABC):
     config: dict
 
     @abstractmethod
-    def read(self, path) -> BaseRaw:
+    def read(self, path: PathLike) -> BaseRaw:
         """Read in raw data"""
 
 
@@ -90,12 +89,11 @@ class FifReader(RawReader):
         return read_raw_fif(path, **self.config)
 
 
-@dataclass
 class RawWriter(ABC):
     config: dict
 
     @abstractmethod
-    def write(self, raw: BaseRaw, path: PathLike):
+    def write(self, raw: BaseRaw, path: PathLike) -> None:
         """Write raw data to a filesystem"""
 
 
@@ -103,11 +101,10 @@ class RawWriter(ABC):
 class MneWriter(RawWriter):
     config: dict = field(default_factory=dict)
 
-    def write(self, raw: BaseRaw, path: PathLike):
+    def write(self, raw: BaseRaw, path: PathLike) -> None:
         raw.save(path, **self.config)
 
 
-@dataclass
 class MneBidsWriter(RawWriter):
     """Write raw file together with BIDS metainfo"""
 
@@ -122,19 +119,19 @@ class RawProcessorsChain(FileIoNode):
     raw_in_paths: Collection[PathLike]
     raw_out_path: PathLike
     reader: RawReader
-    processors: Collection[RawProcessor]
+    processors: Sequence[RawProcessor]
     writer: RawWriter
 
-    def _read_input(self):
+    def _read_input(self) -> List:
         return [self.reader.read(p) for p in self.raw_in_paths]
 
-    def _write_output(self, result):
+    def _write_output(self, result: BaseRaw) -> None:
         self.writer.write(result, self.raw_out_path)
 
-    def _process(self, in_objs):
+    def _process(self, in_objs: Sequence[BaseRaw]) -> BaseRaw:
         return self._run_processors(in_objs)
 
-    def _run_processors(self, in_objs):
+    def _run_processors(self, in_objs: Sequence[BaseRaw]) -> BaseRaw:
         assert self.processors, "Must pass at least one processor"
         intermediate_raw = self.processors[0].run(*in_objs)
         for node in self.processors[1:]:

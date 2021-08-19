@@ -1,4 +1,5 @@
 from pytest import fixture
+from dataclasses import dataclass, field
 
 import mne
 from mne.io import read_raw_fif
@@ -111,7 +112,10 @@ def test_mne_writer_data_unchanged(simple_raw_factory, tmp_raw_savepath):
 
 @fixture
 def mock_reader():
+    @dataclass
     class MockRawReader(RawReader):
+        config: dict = field(default_factory=dict)
+
         def read(self, path):
             return read_raw_fif(path, preload=True)
 
@@ -120,7 +124,10 @@ def mock_reader():
 
 @fixture
 def mock_writer():
+    @dataclass
     class MockWriter(RawWriter):
+        config: dict = field(default_factory=dict)
+
         def write(self, raw, path):
             raw.save(path)
 

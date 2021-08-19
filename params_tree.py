@@ -1,18 +1,22 @@
+from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import dataclass, field
-from typing import Any, Iterable, List, Collection
 from itertools import chain
-from abc import ABC, abstractmethod
+from typing import Any, Collection, Generator, Hashable, Iterable, List
 
 
-class LevelError(Exception):
+class ParamsTreeError(Exception):
+    pass
+
+
+class LevelError(ParamsTreeError):
     pass
 
 
 @dataclass
-class ViewableParamsNode:
+class ViewableNode:
     level: str
-    value: Any
+    value: Hashable
     children: List = field(default_factory=list, init=False, repr=False)
 
     def is_leaf_node(self):
@@ -22,28 +26,27 @@ class ViewableParamsNode:
         return self.children and not self.children[0].children
 
 
-@dataclass
 class ViewableTree(ABC):
-    root: ViewableParamsNode = field(init=False, repr=False)
+    root: ViewableNode = field(init=False, repr=False)
 
 
 class View(ABC):
     @abstractmethod
-    def get(self, tree: ViewableTree):
+    def get(self, tree: ViewableTree) -> Any:
         """Get the view"""
 
 
 class FlatView(View):
-    def get(self, tree):
+    def get(self, tree: ViewableTree) -> List[OrderedDict]:
         return list(chain(*(self.flatten(c) for c in tree.root.children)))
 
     @staticmethod
-    def flatten(node) -> Iterable[OrderedDict]:
+    def flatten(node: ViewableNode) -> Generator[OrderedDict, None, None]:
         if node.is_leaf_node():
             yield OrderedDict({node.level: node.value})
         for c in node.children:
             for k in FlatView.flatten(c):
-                yield {node.level: node.value} | k
+                yield OrderedDict({node.level: node.value} | k)
 
 
 @dataclass
@@ -51,21 +54,27 @@ class StringView(View):
     TAB: str = " " * 4
     SEP: str = ": "
 
-    def get(self, tree):
+    def get(self, tree: ViewableTree) -> str:
         return "\n".join(self._to_str(c) for c in tree.root.children)
 
-    def _to_str(self, node):
+    def _to_str(self, node: ViewableNode) -> str:
         res = [f"{node.level}{self.SEP}{node.value}"]
         res.extend(self._indent(self._to_str(c)) for c in node.children)
         return "\n".join(res)
 
-    def _indent(self, node_str) -> str:
+    def _indent(self, node_str: str) -> str:
         return "\n".join(map(lambda k: self.TAB + k, node_str.split("\n")))
 
 
-class ParamsNode(ViewableParamsNode):
+class ParamsNode(ViewableNode):
+    def __getitem__(self, item: Any) -> ViewableNode:
+        for c in self.children:
+            if c.value == item:
+                return c
+        raise ParamsTreeError(f"Item {item} not found")
+
     @classmethod
-    def create_level(cls, level_name, values) -> List:
+    def create_level(cls, level_name: str, values: Collection[Any]) -> List:
         return [cls(level_name, v) for v in values]
 
 
@@ -78,20 +87,20 @@ class ParamsTree(ViewableTree):
     def __post_init__(self):
         self.root = ParamsNode("ROOT", None)
 
-    def append(self, level_name: str, values: Collection[Any]):
+    def append(self, level_name: str, values: Collection[Any]) -> None:
         """Append level to a tree"""
         if level_name in self.levels:
             raise LevelError(f"Level '{level_name}' exists")
         self.levels.append(level_name)
         self._append(self.root, level_name, values)
 
-    def change_last(self, values: Collection[Any], level_filters=None):
+    def change_last(self, values: Collection[Any], level_filters=None) -> None:
         """Selectively change last level values"""
         level_filters = {} if level_filters is None else level_filters
         self._check_filter_levels_present(level_filters)
         self._change_last(self.root, values, level_filters)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.str_view.get(self)
 
     def _append(self, node, level_name, values):
