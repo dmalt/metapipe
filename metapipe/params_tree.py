@@ -2,7 +2,16 @@ from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from itertools import chain
-from typing import Any, Collection, Generator, Hashable, Iterable, List
+from typing import (
+    Any,
+    Collection,
+    Generator,
+    Hashable,
+    Iterable,
+    List,
+    Dict,
+    Callable,
+)
 
 
 class ParamsTreeError(Exception):
@@ -87,7 +96,7 @@ class ParamsTree(ViewableTree):
     def __post_init__(self):
         self.root = ParamsNode("ROOT", None)
 
-    def append(self, level_name: str, values: Collection[Any]) -> None:
+    def append(self, level_name: str, values: Collection[Hashable]) -> None:
         """Append level to a tree"""
         if level_name in self.levels:
             raise LevelError(f"Level '{level_name}' exists")
@@ -95,7 +104,11 @@ class ParamsTree(ViewableTree):
         self.levels.append(level_name)
         self._append(self.root, level_name, values)
 
-    def change_last(self, values: Collection[Any], level_filters=None) -> None:
+    def change_last(
+        self,
+        values: Collection[Hashable],
+        level_filters: Dict[str, Callable] = None,
+    ) -> None:
         """Selectively change last level values"""
         level_filters = {} if level_filters is None else level_filters
         self._check_filter_levels_present(level_filters)
@@ -115,7 +128,7 @@ class ParamsTree(ViewableTree):
         if node.is_next_to_leaf_node():
             node.children = node.create_level(node.children[0].level, values)
         else:
-            for c in self.filt_children(node, level_filters):
+            for c in self._filt_children(node, level_filters):
                 self._change_last(c, values, level_filters)
 
     def _check_filter_levels_present(self, level_filters):
@@ -123,7 +136,7 @@ class ParamsTree(ViewableTree):
             raise LevelError(f"Each filter level must be one of {self.levels}")
 
     @staticmethod
-    def filt_children(node, filt) -> Iterable:
+    def _filt_children(node, filt) -> Iterable:
         return filter(
             lambda c: c.level not in filt or filt[c.level](c.value),
             node.children,
