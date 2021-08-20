@@ -36,6 +36,11 @@ def test_appending_existing_layer_raises_exception(tree):
         tree.append("root", (None,))
 
 
+def test_appending_layer_with_nonunique_values_raises_exception(tree):
+    with raises(ParamsTreeError):
+        tree.append("sub", ("01", "01"))
+
+
 def test_change_outermost_level_no_filter(tree):
     tree.append("sub", ("01",))
     tree.append("task", ("eo", "ec"))

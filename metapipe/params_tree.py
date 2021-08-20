@@ -91,6 +91,7 @@ class ParamsTree(ViewableTree):
         """Append level to a tree"""
         if level_name in self.levels:
             raise LevelError(f"Level '{level_name}' exists")
+        self._check_values_unique(values)
         self.levels.append(level_name)
         self._append(self.root, level_name, values)
 
@@ -127,3 +128,10 @@ class ParamsTree(ViewableTree):
             lambda c: c.level not in filt or filt[c.level](c.value),
             node.children,
         )
+
+    @staticmethod
+    def _check_values_unique(values) -> None:
+        if len(set(values)) != len(values):
+            raise ParamsTreeError(
+                f"All values must be different (got '{values}')"
+            )
