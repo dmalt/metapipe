@@ -41,6 +41,12 @@ def test_appending_layer_with_nonunique_values_raises_exception(tree):
         tree.append("sub", ("01", "01"))
 
 
+def test_changing_last_with_nonunique_values_raises_exception(tree):
+    tree.append("sub", ("01", "02"))
+    with raises(ParamsTreeError):
+        tree.change_last(("01", "01"))
+
+
 def test_change_outermost_level_no_filter(tree):
     tree.append("sub", ("01",))
     tree.append("task", ("eo", "ec"))

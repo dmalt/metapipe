@@ -7,7 +7,7 @@ from typing import (
     Collection,
     Generator,
     Hashable,
-    Iterable,
+    Iterator,
     List,
     Dict,
     Callable,
@@ -112,6 +112,7 @@ class ParamsTree(ViewableTree):
         """Selectively change last level values"""
         level_filters = {} if level_filters is None else level_filters
         self._check_filter_levels_present(level_filters)
+        self._check_values_unique(values)
         self._change_last(self.root, values, level_filters)
 
     def __str__(self) -> str:
@@ -136,7 +137,7 @@ class ParamsTree(ViewableTree):
             raise LevelError(f"Each filter level must be one of {self.levels}")
 
     @staticmethod
-    def _filt_children(node, filt) -> Iterable:
+    def _filt_children(node, filt) -> Iterator:
         return filter(
             lambda c: c.level not in filt or filt[c.level](c.value),
             node.children,
