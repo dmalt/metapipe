@@ -6,7 +6,7 @@ from mne.io import read_raw_fif
 import numpy as np
 from numpy.testing import assert_allclose
 
-from raw_processors import (
+from metapipe.raw_processors import (
     BandPassFilter,
     ConcatRaws,
     Resample,

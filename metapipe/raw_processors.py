@@ -31,7 +31,7 @@ from mne import concatenate_raws  # type: ignore
 from mne.io import Raw, read_raw_fif  # type: ignore
 from mne.io.base import BaseRaw  # type: ignore
 
-from nodes import FileIoNode
+from metapipe.nodes import FileIoNode
 
 
 class RawProcessor(ABC):

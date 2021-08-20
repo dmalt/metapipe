@@ -2,3 +2,4 @@
 __pycache__
 *,cover
 Makefile
+metapipe.egg-info

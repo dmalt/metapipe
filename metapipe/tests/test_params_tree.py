@@ -2,7 +2,7 @@ from collections import OrderedDict
 
 from pytest import fixture, raises
 
-from params_tree import (
+from metapipe.params_tree import (
     ParamsTree,
     LevelError,
     FlatView,

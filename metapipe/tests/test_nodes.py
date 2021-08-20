@@ -2,7 +2,7 @@ from pytest import fixture
 from dataclasses import dataclass
 from os import PathLike
 
-from nodes import FileIoNode
+from metapipe.nodes import FileIoNode
 
 
 @fixture

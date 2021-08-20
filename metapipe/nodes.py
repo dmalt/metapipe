@@ -1,17 +1,16 @@
 from abc import ABC, abstractmethod
-from collections.abc import Collection
 from typing import Any, Sequence
 
 
 class FileIoNode(ABC):
-    def run(self):
+    def run(self) -> Any:
         """Read data, process it and save the result"""
         in_objs = self._read_input()
         result = self._process(in_objs)
         self._write_output(result)
 
     @abstractmethod
-    def _read_input(self) -> Collection[Any]:
+    def _read_input(self) -> Sequence[Any]:
         """Read input files"""
 
     @abstractmethod
