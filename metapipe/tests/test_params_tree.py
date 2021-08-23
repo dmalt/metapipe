@@ -6,5 +6,9 @@ from metapipe.params_tree import ParamsTrie, ParamsTrieError
 
 
 @fixture
-def tree():
+def trie():
     return ParamsTrie()
+
+
+def test_new_trie_is_created_empty():
+    assert len(ParamsTrie()) == 0

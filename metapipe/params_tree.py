@@ -1,4 +1,3 @@
-from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from typing import Sequence, Union
@@ -18,7 +17,10 @@ class ParamsTrie:
         value: Value
         children: Sequence
 
-    root: _ParamsNode = field(init=False, repr=False)
+    _root: _ParamsNode = field(init=False, repr=False)
 
     def __post_init__(self):
-        self.root = self._ParamsNode("ROOT", None)
+        self.root = self._ParamsNode("ROOT", None, [])
+
+    def __len__(self):
+        return 0
