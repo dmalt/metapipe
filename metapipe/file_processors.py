@@ -4,7 +4,7 @@ from typing import Sequence, Collection, List
 
 from mne.preprocessing import ICA  # type: ignore
 
-from metapipe.interfaces import (
+from metapipe.abc import (
     FileProcessor,
     Reader,
     Writer,

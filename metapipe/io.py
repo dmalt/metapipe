@@ -3,7 +3,7 @@ from os import PathLike
 
 from mne.io import Raw, read_raw_fif  # type: ignore
 
-from metapipe.interfaces import Reader, Writer, MneContainer
+from metapipe.abc import Reader, Writer, MneContainer
 
 
 @dataclass

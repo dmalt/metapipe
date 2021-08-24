@@ -4,7 +4,7 @@ from pytest import fixture
 from mne.io import read_raw_fif
 
 from metapipe.file_processors import ProcessorsChain
-from metapipe.interfaces import Reader, Writer, InMemoProcessor
+from metapipe.abc import Reader, Writer, InMemoProcessor
 from metapipe.tests.test_inmemo_processors import (  # noqa
     saved_fif_fpath_and_object,  # noqa
     simple_raw_factory,  # noqa

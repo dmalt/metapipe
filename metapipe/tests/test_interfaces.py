@@ -2,7 +2,7 @@ from pytest import fixture
 from dataclasses import dataclass
 from os import PathLike
 
-from metapipe.interfaces import FileProcessor
+from metapipe.abc import FileProcessor
 
 
 @fixture

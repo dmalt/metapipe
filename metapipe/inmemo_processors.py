@@ -4,7 +4,7 @@ from collections.abc import Collection
 from mne import concatenate_raws  # type: ignore
 from mne.io.base import BaseRaw  # type: ignore
 
-from metapipe.interfaces import InMemoProcessor, MneContainer
+from metapipe.abc import InMemoProcessor, MneContainer
 
 
 @dataclass
