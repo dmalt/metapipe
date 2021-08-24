@@ -9,7 +9,7 @@ from numpy.testing import assert_allclose
 from metapipe.raw_processors import (
     BandPassFilter, ConcatRaws, Resample, RawProcessorsChain
 )
-from metapipe.interfaces import DataReader, RawWriter, RawProcessor
+from metapipe.interfaces import Reader, Writer, Processor
 
 
 @fixture
@@ -91,7 +91,7 @@ def test_resample(simple_raw_factory):
 @fixture
 def mock_reader():
     @dataclass
-    class MockRawReader(DataReader):
+    class MockRawReader(Reader):
         config: dict = field(default_factory=dict)
 
         def read(self, path):
@@ -103,7 +103,7 @@ def mock_reader():
 @fixture
 def mock_writer():
     @dataclass
-    class MockWriter(RawWriter):
+    class MockWriter(Writer):
         config: dict = field(default_factory=dict)
 
         def write(self, raw, path):
@@ -114,7 +114,7 @@ def mock_writer():
 
 @fixture
 def mock_processor():
-    class MockProcessor(RawProcessor):
+    class MockProcessor(Processor):
         """Append somethng to raw.info['description']"""
 
         def run(self, raw):

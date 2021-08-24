@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from os import PathLike
-from typing import Union, Any, Sequence, Collection
-from mne.io.base import BaseRaw  # type: ignore
+from typing import Any, Sequence
 
 
 class FileProcessor(ABC):
@@ -24,23 +23,24 @@ class FileProcessor(ABC):
         """Write the result to filesystem"""
 
 
-class RawProcessor(ABC):
+class Processor(ABC):
+    """Type-preserving in-memory processor abstraction"""
     @abstractmethod
-    def run(self, raw_input: Union[BaseRaw, Collection[BaseRaw]]) -> BaseRaw:
+    def run(self, in_obj: Any) -> Any:
         """Run processor"""
 
 
-class RawReader(ABC):
+class Reader(ABC):
     config: dict
 
     @abstractmethod
-    def read(self, path: PathLike) -> BaseRaw:
+    def read(self, path: PathLike) -> Any:
         """Read in raw data"""
 
 
-class RawWriter(ABC):
+class Writer(ABC):
     config: dict
 
     @abstractmethod
-    def write(self, raw: BaseRaw, path: PathLike) -> None:
+    def write(self, data: Any, path: PathLike) -> None:
         """Write raw data to a filesystem"""

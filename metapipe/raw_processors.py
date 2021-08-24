@@ -24,28 +24,26 @@ Create raw chain filtering and resampling
 from dataclasses import dataclass, field
 from os import PathLike
 from collections.abc import Sequence, Collection
-from typing import List
+from typing import List, Union
 
-from mne import concatenate_raws  # type: ignore
+from mne import concatenate_raws, Epochs  # type: ignore
 from mne.io.base import BaseRaw
 
-from metapipe.interfaces import (
-    RawProcessor,
-    FileProcessor,
-    DataReader,
-    RawWriter,
-)
+from metapipe.interfaces import Processor, FileProcessor, Reader, Writer
+
+
+MneContainer = Union[BaseRaw, Epochs]
 
 
 @dataclass
-class BandPassFilter(RawProcessor):
+class BandPassFilter(Processor):
     config: dict = field(default_factory=lambda: dict(l_freq=1, h_freq=100))
 
-    def run(self, raw: BaseRaw) -> BaseRaw:
+    def run(self, raw: MneContainer) -> MneContainer:
         return raw.copy().filter(**self.config)
 
 
-class ConcatRaws(RawProcessor):
+class ConcatRaws(Processor):
     """Concatenate common channels from raw objects"""
 
     def run(self, *raws: Collection[BaseRaw]) -> BaseRaw:
@@ -63,10 +61,10 @@ class ConcatRaws(RawProcessor):
 
 
 @dataclass
-class Resample(RawProcessor):
+class Resample(Processor):
     config: dict = field(default_factory=dict)
 
-    def run(self, raw: BaseRaw) -> BaseRaw:
+    def run(self, raw: MneContainer) -> MneContainer:
         return raw.copy().resample(**self.config)
 
 
@@ -77,17 +75,17 @@ class RawProcessorsChain(FileProcessor):
 
     """
 
-    raw_in_paths: Collection[PathLike]
-    raw_out_path: PathLike
-    reader: DataReader
-    processors: Sequence[RawProcessor]
-    writer: RawWriter
+    in_paths: Collection[PathLike]
+    out_path: PathLike
+    reader: Reader
+    processors: Sequence[Processor]
+    writer: Writer
 
     def _read_input(self) -> List:
-        return [self.reader.read(p) for p in self.raw_in_paths]
+        return [self.reader.read(p) for p in self.in_paths]
 
     def _write_output(self, result: BaseRaw) -> None:
-        self.writer.write(result, self.raw_out_path)
+        self.writer.write(result, self.out_path)
 
     def _process(self, in_objs: Sequence[BaseRaw]) -> BaseRaw:
         return self._run_processors(in_objs)

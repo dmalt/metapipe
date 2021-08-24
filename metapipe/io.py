@@ -4,11 +4,11 @@ from os import PathLike
 from mne.io import Raw, read_raw_fif  # type: ignore
 from mne.io.base import BaseRaw
 
-from metapipe.interfaces import DataReader, RawWriter
+from metapipe.interfaces import Reader, Writer
 
 
 @dataclass
-class RawFifReader(DataReader):
+class RawFifReader(Reader):
     config: dict = field(default_factory=lambda: dict(preload=True))
 
     def read(self, path: PathLike) -> Raw:
@@ -16,12 +16,12 @@ class RawFifReader(DataReader):
 
 
 @dataclass
-class MneWriter(RawWriter):
+class MneWriter(Writer):
     config: dict = field(default_factory=dict)
 
     def write(self, raw: BaseRaw, path: PathLike) -> None:
         raw.save(path, **self.config)
 
 
-class MneBidsWriter(RawWriter):
+class MneBidsWriter(Writer):
     """Write raw file together with BIDS metainfo"""
