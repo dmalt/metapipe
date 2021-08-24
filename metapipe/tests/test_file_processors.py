@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from pytest import fixture
+from pytest import fixture, raises
 
 from mne.io import read_raw_fif
 
@@ -38,6 +38,8 @@ def mock_writer():
 
 @fixture
 def mock_processor():
+    """Processor which adds 'mock-processed' substring to description"""
+
     class MockProcessor(InMemoProcessor):
         """Append somethng to raw.info['description']"""
 
@@ -53,7 +55,7 @@ def mock_processor():
     return MockProcessor()
 
 
-def test_processors_chain(
+def test_processors_chain_of_mock_processors_adds_to_description(
     mock_reader,
     mock_writer,
     mock_processor,
@@ -71,6 +73,16 @@ def test_processors_chain(
     chain.run()
     raw_loaded = read_raw_fif(savepath)
     assert raw_loaded.info["description"] == "mock-processed, mock-processed"
+
+
+def test_processors_chain_raises_exception_when_no_processors_supplied(
+    mock_reader, mock_writer
+):
+    with raises(ValueError):
+        ProcessorsChain(
+            ["test_in.fif"], "test_out.fif", mock_reader, [], mock_writer,
+        )
+
 
 
 def test_compute_ica(mock_reader, saved_fif_fpath_and_object):  # noqa

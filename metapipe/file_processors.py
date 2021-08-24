@@ -45,7 +45,8 @@ class ProcessorsChain(abc.FileProcessor):
     writer: abc.Writer
 
     def __post_init__(self) -> None:
-        assert self.processors, "Must pass at least one processor"
+        if not self.processors:
+            raise ValueError("Must pass at least one processor (got none)")
 
     def _read_input(self) -> List:
         return [self.reader.read(p) for p in self.in_paths]
