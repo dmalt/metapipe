@@ -10,13 +10,11 @@ from metapipe.raw_processors import (
     BandPassFilter,
     ConcatRaws,
     Resample,
-    FifReader,
+    RawFifReader,
     MneWriter,
-    RawReader,
-    RawWriter,
-    RawProcessor,
     RawProcessorsChain
 )
+from metapipe.interfaces import RawReader, RawWriter, RawProcessor
 
 
 @fixture
@@ -96,7 +94,7 @@ def test_resample(simple_raw_factory):
 
 
 def test_fif_reader_reads_same_data(saved_fif_fpath_and_object):
-    reader = FifReader()
+    reader = RawFifReader()
     loaded_raw = reader.read(saved_fif_fpath_and_object[0])
     saved_raw = saved_fif_fpath_and_object[1]
     assert_allclose(loaded_raw.get_data(), saved_raw.get_data())

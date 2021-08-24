@@ -4,7 +4,7 @@ Examples
 
 Create raw filtering chain
 
->>> rd, wrt = FifReader(), MneWriter()
+>>> rd, wrt = RawFifReader(), MneWriter()
 >>> flt = BandPassFilter(config = {"l_freq": 1, "h_freq": 100})
 >>> filt_chain = RawProcessorsChain(["i.fif"], "o.fif", rd, [flt], wrt)
 >>> print(filt_chain.processors)
@@ -12,7 +12,7 @@ Create raw filtering chain
 
 Create raw chain filtering and resampling
 
->>> rd, wrt = FifReader(), MneWriter()
+>>> rd, wrt = RawFifReader(), MneWriter()
 >>> flt = BandPassFilter(config = {"l_freq": 1, "h_freq": 100})
 >>> rsmp = Resample()
 >>> filt_chain = RawProcessorsChain(["i.fif"], "o.fif", rd, [flt, rsmp], wrt)
@@ -21,23 +21,21 @@ Create raw chain filtering and resampling
 
 """
 
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from os import PathLike
-from typing import Union, List
 from collections.abc import Sequence, Collection
+from typing import List
 
 from mne import concatenate_raws  # type: ignore
 from mne.io import Raw, read_raw_fif  # type: ignore
-from mne.io.base import BaseRaw  # type: ignore
+from mne.io.base import BaseRaw
 
-from metapipe.nodes import FileIoNode
-
-
-class RawProcessor(ABC):
-    @abstractmethod
-    def run(self, raw_input: Union[BaseRaw, Collection[BaseRaw]]) -> BaseRaw:
-        """Run processor"""
+from metapipe.interfaces import (
+    RawProcessor,
+    FileProcessor,
+    RawReader,
+    RawWriter,
+)
 
 
 @dataclass
@@ -73,28 +71,12 @@ class Resample(RawProcessor):
         return raw.copy().resample(**self.config)
 
 
-class RawReader(ABC):
-    config: dict
-
-    @abstractmethod
-    def read(self, path: PathLike) -> BaseRaw:
-        """Read in raw data"""
-
-
 @dataclass
-class FifReader(RawReader):
+class RawFifReader(RawReader):
     config: dict = field(default_factory=lambda: dict(preload=True))
 
     def read(self, path: PathLike) -> Raw:
         return read_raw_fif(path, **self.config)
-
-
-class RawWriter(ABC):
-    config: dict
-
-    @abstractmethod
-    def write(self, raw: BaseRaw, path: PathLike) -> None:
-        """Write raw data to a filesystem"""
 
 
 @dataclass
@@ -110,7 +92,7 @@ class MneBidsWriter(RawWriter):
 
 
 @dataclass
-class RawProcessorsChain(FileIoNode):
+class RawProcessorsChain(FileProcessor):
     """
     Read multiple raw objects, process them into one raw object and write
 

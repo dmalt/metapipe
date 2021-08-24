@@ -2,7 +2,7 @@ from pytest import fixture
 from dataclasses import dataclass
 from os import PathLike
 
-from metapipe.nodes import FileIoNode
+from metapipe.interfaces import FileProcessor
 
 
 @fixture
@@ -17,7 +17,7 @@ def tmp_text_fpath_and_str(tmp_path):
 @fixture
 def mock_concrete_file_io_node():
     @dataclass
-    class ConcreteFileIoNode(FileIoNode):
+    class ConcreteFileIoNode(FileProcessor):
         mock_file_in: PathLike
         mock_file_out: PathLike
 
