@@ -17,7 +17,7 @@ def test_fif_reader_reads_same_data(saved_fif_fpath_and_object):  # noqa
 
 
 def test_mne_writer_data_unchanged(simple_raw_factory, tmp_raw_savepath):  # noqa
-    raw = simple_raw_factory(1, 300, 32)
+    raw = simple_raw_factory(1, 300)
     writer = MneWriter()
     writer.write(raw, tmp_raw_savepath)
     loaded_raw = read_raw_fif(tmp_raw_savepath)

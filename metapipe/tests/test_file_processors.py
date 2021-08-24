@@ -3,7 +3,7 @@ from pytest import fixture, raises
 
 from mne.io import read_raw_fif
 
-from metapipe.file_processors import ProcessorsChain, ComputeIca
+from metapipe.file_processors import ProcessorsChain, ComputeIca, MakeIcaReport
 from metapipe.abc import Reader, Writer, InMemoProcessor
 from metapipe.tests.test_inmemo_processors import (  # noqa
     saved_fif_fpath_and_object,  # noqa
@@ -79,13 +79,10 @@ def test_processors_chain_raises_exception_when_no_processors_supplied(
     mock_reader, mock_writer
 ):
     with raises(ValueError):
-        ProcessorsChain(
-            ["test_in.fif"], "test_out.fif", mock_reader, [], mock_writer,
-        )
+        ProcessorsChain(["in.fif"], "out.fif", mock_reader, [], mock_writer)
 
 
-
-def test_compute_ica(mock_reader, saved_fif_fpath_and_object):  # noqa
+def test_compute_ica_saves_file(mock_reader, saved_fif_fpath_and_object):  # noqa
     raw_path = saved_fif_fpath_and_object[0]
     savepath = raw_path.parent / (
         "mock_processed_" + raw_path.stem + "_ica.fif"
@@ -93,3 +90,25 @@ def test_compute_ica(mock_reader, saved_fif_fpath_and_object):  # noqa
     ica_node = ComputeIca(raw_path, mock_reader, savepath)
     ica_node.run()
     assert savepath.exists()
+    savepath.unlink()
+
+
+@fixture
+def raw_and_ica_sol(saved_fif_fpath_and_object, mock_reader):  # noqa
+    raw_path = saved_fif_fpath_and_object[0]
+    ica_path = raw_path.parent / (
+        "mock_processed_" + raw_path.stem + "_ica.fif"
+    )
+    ica_node = ComputeIca(raw_path, mock_reader, ica_path)
+    ica_node.run()
+    yield raw_path, ica_path
+    ica_path.unlink()
+
+
+def test_make_ica_report_produces_html_file(mock_reader, raw_and_ica_sol):
+    raw_path, ica_path = raw_and_ica_sol
+    report_path = ica_path.parent / (ica_path.stem + "_report.html")
+    report_node = MakeIcaReport(raw_path, mock_reader, ica_path, report_path)
+    report_node.run()
+    assert report_path.exists()
+    report_path.unlink()

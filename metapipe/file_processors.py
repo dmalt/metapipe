@@ -2,7 +2,8 @@ from dataclasses import dataclass, field
 from os import PathLike
 from typing import Collection, List, Sequence
 
-from mne.preprocessing import ICA  # type: ignore
+from mne import Report  # type: ignore
+from mne.preprocessing import ICA, read_ica  # type: ignore
 
 from metapipe import abc
 
@@ -102,6 +103,36 @@ class ComputeIca(abc.FileProcessor):
 
     def _write_output(self, ica: ICA) -> None:
         ica.save(self.ica_sol_out_path)
+
+
+@dataclass
+class MakeIcaReport(abc.FileProcessor):
+    """
+    Notes
+    -----
+    Works only for data with set montage. Montage can be set for example with
+    raw.set_montage function
+
+    """
+    in_data_path: PathLike
+    reader: abc.Reader
+    in_ica_sol_path: PathLike
+    out_report_path: PathLike
+
+    def _read_input(self):
+        data = self.reader.read(self.in_data_path)
+        ica = read_ica(self.in_ica_sol_path)
+        return data, ica
+
+    def _process(self, in_objs):
+        data, ica = in_objs
+        report = Report(verbose=False)
+        topos = ica.plot_components(picks=range(ica.n_components_), show=False)
+        report.add_figs_to_section(topos, section="ICA", captions="Timeseries")
+        return report
+
+    def _write_output(self, report):
+        report.save(self.out_report_path, overwrite=True, open_browser=False)
 
 
 def main():
