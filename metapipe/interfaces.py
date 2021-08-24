@@ -1,6 +1,11 @@
 from abc import ABC, abstractmethod
 from os import PathLike
-from typing import Any, Sequence
+from typing import Any, Sequence, Union
+
+from mne import Epochs  # type: ignore
+from mne.io.base import BaseRaw  # type: ignore
+
+MneContainer = Union[BaseRaw, Epochs]
 
 
 class FileProcessor(ABC):

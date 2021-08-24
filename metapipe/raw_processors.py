@@ -24,15 +24,18 @@ Create raw chain filtering and resampling
 from dataclasses import dataclass, field
 from os import PathLike
 from collections.abc import Sequence, Collection
-from typing import List, Union
+from typing import List
 
-from mne import concatenate_raws, Epochs  # type: ignore
+from mne import concatenate_raws  # type: ignore
 from mne.io.base import BaseRaw
 
-from metapipe.interfaces import Processor, FileProcessor, Reader, Writer
-
-
-MneContainer = Union[BaseRaw, Epochs]
+from metapipe.interfaces import (
+    Processor,
+    FileProcessor,
+    Reader,
+    Writer,
+    MneContainer,
+)
 
 
 @dataclass
@@ -84,13 +87,13 @@ class RawProcessorsChain(FileProcessor):
     def _read_input(self) -> List:
         return [self.reader.read(p) for p in self.in_paths]
 
-    def _write_output(self, result: BaseRaw) -> None:
+    def _write_output(self, result: MneContainer) -> None:
         self.writer.write(result, self.out_path)
 
-    def _process(self, in_objs: Sequence[BaseRaw]) -> BaseRaw:
+    def _process(self, in_objs: Sequence[MneContainer]) -> MneContainer:
         return self._run_processors(in_objs)
 
-    def _run_processors(self, in_objs: Sequence[BaseRaw]) -> BaseRaw:
+    def _run_processors(self, in_objs: Sequence[MneContainer]) -> MneContainer:
         assert self.processors, "Must pass at least one processor"
         intermediate_raw = self.processors[0].run(*in_objs)
         for node in self.processors[1:]:
