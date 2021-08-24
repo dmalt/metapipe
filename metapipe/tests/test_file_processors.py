@@ -3,7 +3,7 @@ from pytest import fixture
 
 from mne.io import read_raw_fif
 
-from metapipe.file_processors import ProcessorsChain
+from metapipe.file_processors import ProcessorsChain, ComputeIca
 from metapipe.abc import Reader, Writer, InMemoProcessor
 from metapipe.tests.test_inmemo_processors import (  # noqa
     saved_fif_fpath_and_object,  # noqa
@@ -71,3 +71,13 @@ def test_processors_chain(
     chain.run()
     raw_loaded = read_raw_fif(savepath)
     assert raw_loaded.info["description"] == "mock-processed, mock-processed"
+
+
+def test_compute_ica(mock_reader, saved_fif_fpath_and_object):  # noqa
+    raw_path = saved_fif_fpath_and_object[0]
+    savepath = raw_path.parent / (
+        "mock_processed_" + raw_path.stem + "_ica.fif"
+    )
+    ica_node = ComputeIca(raw_path, mock_reader, savepath)
+    ica_node.run()
+    assert savepath.exists()

@@ -101,7 +101,7 @@ class ComputeIca(FileProcessor):
 
     def _process(self, raw):
         ica = ICA(**self.construct_config)
-        ica.fit(**self.fit_config)
+        ica.fit(raw, **self.fit_config)
         return ica
 
     def _write_output(self, ica):
