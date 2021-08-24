@@ -7,14 +7,9 @@ import numpy as np
 from numpy.testing import assert_allclose
 
 from metapipe.raw_processors import (
-    BandPassFilter,
-    ConcatRaws,
-    Resample,
-    RawFifReader,
-    MneWriter,
-    RawProcessorsChain
+    BandPassFilter, ConcatRaws, Resample, RawProcessorsChain
 )
-from metapipe.interfaces import RawReader, RawWriter, RawProcessor
+from metapipe.interfaces import DataReader, RawWriter, RawProcessor
 
 
 @fixture
@@ -93,25 +88,10 @@ def test_resample(simple_raw_factory):
     assert result.info["sfreq"] == 150
 
 
-def test_fif_reader_reads_same_data(saved_fif_fpath_and_object):
-    reader = RawFifReader()
-    loaded_raw = reader.read(saved_fif_fpath_and_object[0])
-    saved_raw = saved_fif_fpath_and_object[1]
-    assert_allclose(loaded_raw.get_data(), saved_raw.get_data())
-
-
-def test_mne_writer_data_unchanged(simple_raw_factory, tmp_raw_savepath):
-    raw = simple_raw_factory(1, 300, 32)
-    writer = MneWriter()
-    writer.write(raw, tmp_raw_savepath)
-    loaded_raw = read_raw_fif(tmp_raw_savepath)
-    assert_allclose(raw.get_data(), loaded_raw.get_data())
-
-
 @fixture
 def mock_reader():
     @dataclass
-    class MockRawReader(RawReader):
+    class MockRawReader(DataReader):
         config: dict = field(default_factory=dict)
 
         def read(self, path):

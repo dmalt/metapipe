@@ -27,13 +27,12 @@ from collections.abc import Sequence, Collection
 from typing import List
 
 from mne import concatenate_raws  # type: ignore
-from mne.io import Raw, read_raw_fif  # type: ignore
 from mne.io.base import BaseRaw
 
 from metapipe.interfaces import (
     RawProcessor,
     FileProcessor,
-    RawReader,
+    DataReader,
     RawWriter,
 )
 
@@ -72,26 +71,6 @@ class Resample(RawProcessor):
 
 
 @dataclass
-class RawFifReader(RawReader):
-    config: dict = field(default_factory=lambda: dict(preload=True))
-
-    def read(self, path: PathLike) -> Raw:
-        return read_raw_fif(path, **self.config)
-
-
-@dataclass
-class MneWriter(RawWriter):
-    config: dict = field(default_factory=dict)
-
-    def write(self, raw: BaseRaw, path: PathLike) -> None:
-        raw.save(path, **self.config)
-
-
-class MneBidsWriter(RawWriter):
-    """Write raw file together with BIDS metainfo"""
-
-
-@dataclass
 class RawProcessorsChain(FileProcessor):
     """
     Read multiple raw objects, process them into one raw object and write
@@ -100,7 +79,7 @@ class RawProcessorsChain(FileProcessor):
 
     raw_in_paths: Collection[PathLike]
     raw_out_path: PathLike
-    reader: RawReader
+    reader: DataReader
     processors: Sequence[RawProcessor]
     writer: RawWriter
 
