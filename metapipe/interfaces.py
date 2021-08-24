@@ -28,7 +28,7 @@ class FileProcessor(ABC):
         """Write the result to filesystem"""
 
 
-class Processor(ABC):
+class InMemoProcessor(ABC):
     """Type-preserving in-memory processor abstraction"""
     @abstractmethod
     def run(self, in_obj: Any) -> Any:
