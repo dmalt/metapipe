@@ -1,20 +1,14 @@
 from dataclasses import dataclass, field
 from os import PathLike
-from typing import Sequence, Collection, List
+from typing import Collection, List, Sequence
 
 from mne.preprocessing import ICA  # type: ignore
 
-from metapipe.abc import (
-    FileProcessor,
-    Reader,
-    Writer,
-    InMemoProcessor,
-    MneContainer,
-)
+from metapipe import abc
 
 
 @dataclass
-class ProcessorsChain(FileProcessor):
+class ProcessorsChain(abc.FileProcessor):
     """
     Read multiple raw objects, process them into one raw object and write
 
@@ -46,29 +40,30 @@ class ProcessorsChain(FileProcessor):
 
     in_paths: Collection[PathLike]
     out_path: PathLike
-    reader: Reader
-    processors: Sequence[InMemoProcessor]
-    writer: Writer
+    reader: abc.Reader
+    processors: Sequence[abc.InMemoProcessor]
+    writer: abc.Writer
+
+    def __post_init__(self) -> None:
+        assert self.processors, "Must pass at least one processor"
 
     def _read_input(self) -> List:
         return [self.reader.read(p) for p in self.in_paths]
 
-    def _write_output(self, result: MneContainer) -> None:
-        self.writer.write(result, self.out_path)
-
-    def _process(self, in_objs: Sequence[MneContainer]) -> MneContainer:
-        return self._run_processors(in_objs)
-
-    def _run_processors(self, in_objs: Sequence[MneContainer]) -> MneContainer:
-        assert self.processors, "Must pass at least one processor"
-        intermediate_raw = self.processors[0].run(*in_objs)
+    def _process(self, data: Sequence[abc.MneContainer]) -> abc.MneContainer:
+        # address the first processor separately since it's the only one
+        # which possibly maps many to one, i.e. ConcatRaws; others - one to one
+        intermediate = self.processors[0].run(*data)
         for node in self.processors[1:]:
-            intermediate_raw = node.run(intermediate_raw)
-        return intermediate_raw
+            intermediate = node.run(intermediate)
+        return intermediate
+
+    def _write_output(self, result: abc.MneContainer) -> None:
+        self.writer.write(result, self.out_path)
 
 
 @dataclass
-class ComputeIca(FileProcessor):
+class ComputeIca(abc.FileProcessor):
     """
     Compute ICA solution on a raw file
 
@@ -83,7 +78,7 @@ class ComputeIca(FileProcessor):
     """
 
     in_path: PathLike
-    reader: Reader
+    reader: abc.Reader
     ica_sol_out_path: PathLike
     construct_config: dict = field(
         default_factory=lambda: dict(
@@ -96,15 +91,15 @@ class ComputeIca(FileProcessor):
         )
     )
 
-    def _read_input(self):
+    def _read_input(self) -> abc.MneContainer:
         return self.reader.read(self.in_path)
 
-    def _process(self, raw):
+    def _process(self, data: abc.MneContainer) -> ICA:
         ica = ICA(**self.construct_config)
-        ica.fit(raw, **self.fit_config)
+        ica.fit(data, **self.fit_config)
         return ica
 
-    def _write_output(self, ica):
+    def _write_output(self, ica: ICA) -> None:
         ica.save(self.ica_sol_out_path)
 
 
