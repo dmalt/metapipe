@@ -11,3 +11,5 @@ clean:
 	rm -f .coverage
 	rm -rf .pytest_cache
 	rm -rf .mypy_cache
+mypy:
+	mypy metapipe/*.py
