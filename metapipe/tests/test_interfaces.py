@@ -1,6 +1,7 @@
 from pytest import fixture
 from dataclasses import dataclass
 from os import PathLike
+from typing import NamedTuple
 
 from metapipe.abc import FileProcessor
 
@@ -18,18 +19,21 @@ def tmp_text_fpath_and_str(tmp_path):
 def mock_concrete_file_io_node():
     @dataclass
     class ConcreteFileIoNode(FileProcessor):
-        mock_file_in: PathLike
-        mock_file_out: PathLike
+        class InPaths(NamedTuple):
+            mock_file_in: PathLike
 
-        def _read_input(self):
-            with open(self.mock_file_in, "r") as f:
+        class OutPaths(NamedTuple):
+            mock_file_out: PathLike
+
+        def _read_input(self, deps):
+            with open(deps.mock_file_in, "r") as f:
                 return [f.read()]
 
         def _process(self, in_objs):
             return in_objs[0] + ", mock-processed"
 
-        def _write_output(self, result):
-            with open(self.mock_file_out, "w") as f:
+        def _write_output(self, result, targets):
+            with open(targets.mock_file_out, "w") as f:
                 f.write(result)
 
     return ConcreteFileIoNode
@@ -40,7 +44,9 @@ def test_file_io_node_reads_processes_and_runs(
 ):
     in_path, in_string = tmp_text_fpath_and_str
     out_path = in_path.parent / ("mock_processed_" + in_path.name)
-    concrete_file_io_node = mock_concrete_file_io_node(in_path, out_path)
-    concrete_file_io_node.run()
+    concrete_file_io_node = mock_concrete_file_io_node()
+    in_ = concrete_file_io_node.InPaths(in_path)
+    out_ = concrete_file_io_node.OutPaths(out_path)
+    concrete_file_io_node.run(in_, out_)
     with open(out_path, "r") as f:
         assert f.read() == in_string + ", mock-processed"
