@@ -1,7 +1,6 @@
-from dataclasses import dataclass, field, InitVar
 from inspect import Parameter, Signature
 
-from mne_bids import BIDSPath
+from mne_bids import BIDSPath  # type: ignore
 
 
 class FrozenBIDSPath:
@@ -48,11 +47,11 @@ class FrozenBIDSPath:
         return self._bp.__ne__(other)
 
 
-@dataclass
 class BIDSPathTemplate(FrozenBIDSPath):
-    template_vars: InitVar[set] = field(default_factory=set)
-
-    def __post__init__(self, template_vars):
+    def __init__(self, *pargs, check=False, template_vars=None, **kwargs):
+        self._check = check
+        template_vars = set() if template_vars is None else template_vars
+        super().__init__(*pargs, check=check, **kwargs)
         self._template_vars = set(template_vars)
         for var in self._template_vars:
             self._check_template_var(var)
@@ -62,7 +61,7 @@ class BIDSPathTemplate(FrozenBIDSPath):
         # based on recipie 9.16 from the Python Cookbook, 3-d edition
         self._fpath_sig.bind(**kwargs)
 
-        concrete_bp = self.update(**kwargs)
+        concrete_bp = self.update(**kwargs, check=self._check)
         return super(self.__class__, concrete_bp).__getattr__("fpath")
 
     def update(self, *, check: bool = None, **kwargs):
@@ -79,6 +78,7 @@ class BIDSPathTemplate(FrozenBIDSPath):
         else:
             other_template_vars = self._template_vars.copy()
 
+        self._check = check
         other = super().update(check=check, **kwargs)
         for key, val in kwargs.items():
             if key in self._template_vars:
