@@ -9,6 +9,9 @@ doctest:
 coverage:
 	coverage run -m pytest
 	coverage report
+doctests_coverage:
+	coverage run metapipe/file_processors.py
+	coverage report
 pytest_fast:
 	pytest -m "not slow"
 clean:
