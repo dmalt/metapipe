@@ -1,7 +1,7 @@
+import os.path as op
 from dataclasses import dataclass, field
 from os import PathLike, makedirs
-import os.path as op
-from typing import List, Sequence, NamedTuple
+from typing import Any, List, Sequence
 
 from mne import Report  # type: ignore
 from mne.preprocessing import ICA, read_ica  # type: ignore
@@ -23,9 +23,11 @@ class ProcessorsChain(abc.FileProcessor):
     >>> from metapipe.inmemo_processors import BandPassFilter
     >>> rd, wrt = RawFifReader(), MneWriter()
     >>> flt = BandPassFilter(config = {"l_freq": 1, "h_freq": 100})
-    >>> filt_chain = ProcessorsChain(rd, [flt], wrt)
-    >>> print(filt_chain.processors)
+    >>> builder = ProcessorsChain.Builder(rd, [flt], wrt)
+    >>> filt = builder.with_deps(["in.fif"]).with_targets("out.fif").build()
+    >>> print(filt.processors)
     [BandPassFilter(config={'l_freq': 1, 'h_freq': 100})]
+    >>> # filt.run() # make sure "in.fif" exists
 
     Chain filtering and resampling
 
@@ -34,28 +36,51 @@ class ProcessorsChain(abc.FileProcessor):
     >>> rd, wrt = RawFifReader(), MneWriter()
     >>> flt = BandPassFilter(config = {"l_freq": 1, "h_freq": 100})
     >>> rsmp = Resample()
-    >>> filt_chain = ProcessorsChain(rd, [flt, rsmp], wrt)
-    >>> print(filt_chain.processors)
+    >>> builder = ProcessorsChain.Builder(rd, [flt, rsmp], wrt)
+    >>> chain = builder.with_deps(["in.fif"]).with_targets("out.fif").build()
+    >>> print(chain.processors)
     [BandPassFilter(config={'l_freq': 1, 'h_freq': 100}), Resample(config={})]
+    >>> # chain.run() # make sure in.fif exists
 
     """
 
-    class InPaths(NamedTuple):
-        in_paths: Sequence[PathLike]
+    @dataclass
+    class Builder(abc.BaseBuilder):
+        reader: abc.Reader
+        processors: Sequence[abc.InMemoProcessor]
+        writer: abc.Writer
 
-    class OutPaths(NamedTuple):
-        out_path: PathLike
+        def with_deps(self, in_paths: Sequence[PathLike]):  # type: ignore
+            self._deps["in_paths"] = in_paths
+            return self
+
+        def with_targets(self, out_path: PathLike):  # type: ignore
+            self._targets["out_path"] = out_path
+            return self
+
+        def build(self):
+            self.check_ready()
+            return ProcessorsChain(
+                self._deps,
+                self._targets,
+                self.reader,
+                self.processors,
+                self.writer,
+            )
+
+        def check_ready(self):
+            super().check_ready()
+            if not self.processors:
+                raise abc.BuilderNotReadyError(
+                    "Must pass at least one processor (got none)"
+                )
 
     reader: abc.Reader
     processors: Sequence[abc.InMemoProcessor]
     writer: abc.Writer
 
-    def __post_init__(self) -> None:
-        if not self.processors:
-            raise ValueError("Must pass at least one processor (got none)")
-
-    def _read_input(self, deps: "InPaths") -> List:
-        return [self.reader.read(p) for p in deps.in_paths]
+    def _read_input(self) -> List[Any]:
+        return [self.reader.read(p) for p in self._deps["in_paths"]]
 
     def _process(self, data: Sequence[abc.MneContainer]) -> abc.MneContainer:
         # address the first processor separately since it's the only one
@@ -65,10 +90,8 @@ class ProcessorsChain(abc.FileProcessor):
             intermediate = node.run(intermediate)
         return intermediate
 
-    def _write_output(
-        self, result: abc.MneContainer, targets: "OutPaths"
-    ) -> None:
-        self.writer.write(result, targets.out_path)
+    def _write_output(self, result: abc.MneContainer) -> None:
+        self.writer.write(result, self._targets["out_path"])
 
 
 @dataclass
@@ -81,28 +104,39 @@ class IcaComputer(abc.ConfigurableFileProcessor):
     reader : format-specific class responsible for reading data from filesystem
     config : configuration
 
-    Examples
-    --------
-
     """
 
-    class InPaths(NamedTuple):
-        mne_container: PathLike
+    @dataclass
+    class Builder(abc.BaseBuilder):
+        reader: abc.Reader
+        config: dict = field(
+            default_factory=lambda: {
+                "ICA": dict(n_components=0.99, random_state=42, max_iter=1000),
+                "fit": dict(
+                    decim=None, reject_by_annotation=True, picks="data"
+                ),
+                "filt": None,
+            }
+        )
 
-    class OutPaths(NamedTuple):
-        ica: PathLike
+        def with_deps(self, mne_container: PathLike) -> "IcaComputer.Builder":  # type: ignore # noqa
+            self._deps["mne_container"] = mne_container
+            return self
+
+        def with_targets(self, ica: PathLike) -> "IcaComputer.Builder":  # type: ignore # noqa
+            self._targets["ica"] = ica
+            return self
+
+        def build(self):
+            self.check_ready()
+            return IcaComputer(
+                self._deps, self._targets, self.config, self.reader
+            )
 
     reader: abc.Reader
-    config: dict = field(
-        default_factory=lambda: {
-            "ICA": dict(n_components=0.99, random_state=42, max_iter=1000),
-            "fit": dict(decim=None, reject_by_annotation=True, picks="data"),
-            "filt": None,
-        }
-    )
 
-    def _read_input(self, in_paths: "InPaths") -> abc.MneContainer:
-        return self.reader.read(in_paths.mne_container)
+    def _read_input(self) -> abc.MneContainer:
+        return self.reader.read(self._deps["mne_container"])
 
     def _process(self, x: abc.MneContainer) -> ICA:
         ica = ICA(**self.config["ICA"])
@@ -111,9 +145,9 @@ class IcaComputer(abc.ConfigurableFileProcessor):
         ica.fit(x, **self.config["fit"])
         return ica
 
-    def _write_output(self, ica: ICA, out_paths: "OutPaths") -> None:
-        makedirs(op.dirname(out_paths.ica), exist_ok=True)
-        ica.save(out_paths.ica)
+    def _write_output(self, ica: ICA) -> None:
+        makedirs(op.dirname(self._targets["ica"]), exist_ok=True)
+        ica.save(self._targets["ica"])
 
 
 @dataclass
@@ -125,18 +159,29 @@ class IcaReportMaker(abc.FileProcessor):
     raw.set_montage function
 
     """
-    class InPaths(NamedTuple):
-        data: PathLike
-        ica: PathLike
 
-    class OutPaths(NamedTuple):
-        report: PathLike
+    @dataclass
+    class Builder(abc.BaseBuilder):
+        reader: abc.Reader
+
+        def with_deps(self, data: PathLike, ica: PathLike):  # type: ignore # noqa
+            self._deps["data"] = data
+            self._deps["ica"] = ica
+            return self
+
+        def with_targets(self, report: PathLike):  # type: ignore
+            self._targets["report"] = report
+            return self
+
+        def build(self):
+            self.check_ready()
+            return IcaReportMaker(self._deps, self._targets, self.reader)
 
     reader: abc.Reader
 
-    def _read_input(self, deps: InPaths):
-        data = self.reader.read(deps.data)
-        ica = read_ica(deps.ica)
+    def _read_input(self):
+        data = self.reader.read(self._deps["data"])
+        ica = read_ica(self._deps["ica"])
         return data, ica
 
     def _process(self, in_objs):
@@ -146,15 +191,17 @@ class IcaReportMaker(abc.FileProcessor):
         report.add_figs_to_section(topos, section="ICA", captions="Timeseries")
         return report
 
-    def _write_output(self, report, targets: "OutPaths"):
-        report.save(targets.report, overwrite=True, open_browser=False)
+    def _write_output(self, report):
+        report.save(
+            self._targets["report"], overwrite=True, open_browser=False
+        )
 
 
 def main():
-    import doctest
+    import doctest  # pragma: no cover
 
-    doctest.testmod()
+    doctest.testmod()  # pragma: no cover
 
 
 if __name__ == "__main__":
-    main()
+    main()  # pragma: no cover

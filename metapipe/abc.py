@@ -1,6 +1,7 @@
+from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
 from os import PathLike
-from typing import Any, Sequence, Union, NamedTuple
+from typing import Any, Sequence, Union, List
 
 from mne import Epochs  # type: ignore
 from mne.io.base import BaseRaw  # type: ignore
@@ -8,35 +9,75 @@ from mne.io.base import BaseRaw  # type: ignore
 MneContainer = Union[BaseRaw, Epochs]
 
 
+class BuilderNotReadyError(Exception):
+    pass
+
+
+@dataclass  # type: ignore
+class BaseBuilder(ABC):
+    _deps: dict = field(init=False, repr=False, default_factory=dict)
+    _targets: dict = field(init=False, repr=False, default_factory=dict)
+
+    @abstractmethod
+    def with_deps(self, *p, **kw) -> "BaseBuilder":
+        """Set dependency paths"""
+
+    @abstractmethod
+    def with_targets(self, *p, **kw) -> "BaseBuilder":
+        """Set target paths"""
+
+    @abstractmethod
+    def build(self) -> "FileProcessor":
+        """Build an object"""
+
+    @property
+    def deps(self):
+        return sorted(self._deps.values())
+
+    @property
+    def targets(self):
+        return sorted(self._targets.values())
+
+    def is_ready(self):
+        try:
+            self.check_ready()
+            return True
+        except BuilderNotReadyError:
+            return False
+
+    def check_ready(self) -> None:
+        if not self._deps:
+            raise BuilderNotReadyError("Dependencies are not set")
+        if not self._targets:
+            raise BuilderNotReadyError("Targets are not set")
+
+
+@dataclass  # type: ignore
 class FileProcessor(ABC):
-    @staticmethod
+    _deps: dict
+    _targets: dict
+
+    @property
+    def deps(self) -> List[PathLike]:
+        return sorted(self._deps.values())
+
+    @property
+    def targets(self) -> List[PathLike]:
+        return sorted(self._targets.values())
+
+    @property
     @abstractmethod
-    def InPaths(*pargs, **kwargs) -> NamedTuple:
-        """
-        Input specification for run()
+    def Builder(self) -> BaseBuilder:
+        """Builder class"""
 
-        Should be defined as a NamedTuple subclass
-
-        """
-
-    @staticmethod
-    @abstractmethod
-    def OutPaths(*pargs, **kwargs) -> NamedTuple:
-        """
-        Output specification for run()
-
-        Should be defined as a NamedTuple subclass
-
-        """
-
-    def run(self, deps: NamedTuple, target: NamedTuple) -> None:
+    def run(self) -> None:
         """Read data, process it and save the result"""
-        in_objs = self._read_input(deps)
+        in_objs = self._read_input()
         result = self._process(in_objs)
-        self._write_output(result, target)
+        self._write_output(result)
 
     @abstractmethod
-    def _read_input(self, deps) -> Sequence[Any]:
+    def _read_input(self) -> Sequence[Any]:
         """Read input files"""
 
     @abstractmethod
@@ -44,29 +85,13 @@ class FileProcessor(ABC):
         """Process read-in objects"""
 
     @abstractmethod
-    def _write_output(self, result: Any, targets) -> None:
+    def _write_output(self, result: Any) -> None:
         """Write the result to filesystem"""
 
-    def make_task(self, name, deps: NamedTuple, targets: NamedTuple) -> dict:
-        """Produce doit task"""
-        return dict(
-            name=name,
-            file_dep=list(deps),
-            actions=[(self.run, [deps, targets])],
-            targets=list(targets),
-            clean=True,
-        )
 
-
+@dataclass  # type: ignore
 class ConfigurableFileProcessor(FileProcessor):
     config: dict
-
-    def make_task(self, name, deps: NamedTuple, targets: NamedTuple) -> dict:
-        from doit.tools import config_changed  # type: ignore
-
-        base_dict = super().make_task(name, deps, targets)
-        base_dict["uptodate"] = [config_changed(self.config)]
-        return base_dict
 
 
 class InMemoProcessor(ABC):

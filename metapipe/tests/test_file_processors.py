@@ -8,7 +8,7 @@ from metapipe.file_processors import (
     IcaComputer,
     IcaReportMaker,
 )
-from metapipe.abc import Reader, Writer, InMemoProcessor
+from metapipe.abc import Reader, Writer, InMemoProcessor, BuilderNotReadyError
 from metapipe.tests.test_inmemo_processors import (  # noqa
     saved_fif_fpath_and_object,  # noqa
     simple_raw_factory,  # noqa
@@ -67,14 +67,13 @@ def test_processors_chain_of_mock_processors_adds_to_description(
 ):
     raw_path = saved_fif_fpath_and_object[0]
     savepath = raw_path.parent / ("mock_processed_" + raw_path.name)
-    chain = ProcessorsChain(
+    builder = ProcessorsChain.Builder(
         mock_reader,
         [mock_processor, mock_processor],
         mock_writer,
     )
-    in_ = chain.InPaths([raw_path])
-    out_ = chain.OutPaths(savepath)
-    chain.run(in_, out_)
+    chain = builder.with_deps([raw_path]).with_targets(savepath).build()
+    chain.run()
     raw_loaded = read_raw_fif(savepath)
     assert raw_loaded.info["description"] == "mock-processed, mock-processed"
 
@@ -82,8 +81,9 @@ def test_processors_chain_of_mock_processors_adds_to_description(
 def test_processors_chain_raises_exception_when_no_processors_supplied(
     mock_reader, mock_writer
 ):
-    with raises(ValueError):
-        ProcessorsChain(mock_reader, [], mock_writer)
+    with raises(BuilderNotReadyError):
+        builder = ProcessorsChain.Builder(mock_reader, [], mock_writer)
+        builder.with_deps(["in.fif"]).with_targets("out.fif").build()
 
 
 def test_compute_ica_saves_file(mock_reader, saved_fif_fpath_and_object):  # noqa
@@ -91,11 +91,10 @@ def test_compute_ica_saves_file(mock_reader, saved_fif_fpath_and_object):  # noq
     savepath = raw_path.parent / (
         "mock_processed_" + raw_path.stem + "_ica.fif"
     )
-    ica_node = IcaComputer(mock_reader)
-    in_ = ica_node.InPaths(raw_path)
-    out_ = ica_node.OutPaths(savepath)
-    ica_node.config["filt"] = {"l_freq": 1, "h_freq": None}
-    ica_node.run(in_, out_)
+    builder = IcaComputer.Builder(mock_reader)
+    builder.config["filt"] = {"l_freq": 1, "h_freq": None}
+    ica_node = builder.with_deps(raw_path).with_targets(savepath).build()
+    ica_node.run()
     assert savepath.exists()
     savepath.unlink()
 
@@ -106,10 +105,9 @@ def raw_and_ica_sol(saved_fif_fpath_and_object, mock_reader):  # noqa
     ica_path = raw_path.parent / (
         "mock_processed_" + raw_path.stem + "_ica.fif"
     )
-    ica_node = IcaComputer(mock_reader)
-    in_ = ica_node.InPaths(raw_path)
-    out_ = ica_node.OutPaths(ica_path)
-    ica_node.run(in_, out_)
+    builder = IcaComputer.Builder(mock_reader)
+    ica_node = builder.with_deps(raw_path).with_targets(ica_path).build()
+    ica_node.run()
     yield raw_path, ica_path
     ica_path.unlink()
 
@@ -117,9 +115,10 @@ def raw_and_ica_sol(saved_fif_fpath_and_object, mock_reader):  # noqa
 def test_make_ica_report_produces_html_file(mock_reader, raw_and_ica_sol):
     raw_path, ica_path = raw_and_ica_sol
     report_path = ica_path.parent / (ica_path.stem + "_report.html")
-    report_node = IcaReportMaker(mock_reader)
-    in_ = report_node.InPaths(raw_path, ica_path)
-    out_ = report_node.OutPaths(report_path)
-    report_node.run(in_, out_)
+    builder = IcaReportMaker.Builder(mock_reader)
+    report_node = (
+        builder.with_deps(raw_path, ica_path).with_targets(report_path).build()
+    )
+    report_node.run()
     assert report_path.exists()
     report_path.unlink()
