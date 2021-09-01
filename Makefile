@@ -1,9 +1,16 @@
-test:
+fast: pytest_fast flake mypy doctest
+all: coverage flake mypy doctest
+flake:
+	flake8
+mypy:
+	mypy metapipe/*.py
+doctest:
+	python metapipe/file_processors.py
+coverage:
 	coverage run -m pytest
 	coverage report
-	flake8
-	mypy metapipe/*.py
-	python metapipe/file_processors.py
+pytest_fast:
+	pytest -m "not slow"
 clean:
 	rm -f metapipe/*,cover
 	rm -f metapipe/tests/*,cover
@@ -11,5 +18,3 @@ clean:
 	rm -f .coverage
 	rm -rf .pytest_cache
 	rm -rf .mypy_cache
-mypy:
-	mypy metapipe/*.py

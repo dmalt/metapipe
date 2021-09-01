@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from pytest import fixture, raises
+from pytest import fixture, raises, mark
 
 from mne.io import read_raw_fif
 
@@ -112,6 +112,7 @@ def raw_and_ica_sol(saved_fif_fpath_and_object, mock_reader):  # noqa
     ica_path.unlink()
 
 
+@mark.slow
 def test_make_ica_report_produces_html_file(mock_reader, raw_and_ica_sol):
     raw_path, ica_path = raw_and_ica_sol
     report_path = ica_path.parent / (ica_path.stem + "_report.html")
