@@ -22,11 +22,11 @@ def MockFileProcessor():
         @dataclass
         class Builder(BaseBuilder):
             def with_deps(self, mock_file_in: PathLike):
-                self._deps["mock_file_in"] = mock_file_in
+                self._deps = {"mock_file_in": mock_file_in}
                 return self
 
             def with_targets(self, mock_file_out: PathLike):
-                self._targets["mock_file_out"] = mock_file_out
+                self._targets = {"mock_file_out": mock_file_out}
                 return self
 
             def build(self):

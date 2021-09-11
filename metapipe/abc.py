@@ -1,7 +1,18 @@
 from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
 from os import PathLike
-from typing import Any, Sequence, Union, List
+from typing import (
+    Any,
+    Sequence,
+    Union,
+    List,
+    Protocol,
+    NamedTuple,
+    TypeVar,
+    Generic,
+    Type
+)
+
 
 from mne import Epochs  # type: ignore
 from mne.io.base import BaseRaw  # type: ignore
@@ -89,30 +100,26 @@ class FileProcessor(ABC):
         """Write the result to filesystem"""
 
 
-@dataclass  # type: ignore
-class ConfigurableFileProcessor(FileProcessor):
-    config: dict
+T = TypeVar("T", bound=NamedTuple)
 
 
-class InMemoProcessor(ABC):
-    """Type-preserving in-memory processor abstraction"""
+class Processor(Generic[T], Protocol):
+    OutSpec: Type[T]
 
     @abstractmethod
-    def run(self, in_obj: Any) -> Any:
-        """Run processor"""
+    def run(self, data: Any) -> T:
+        """Process data"""
 
 
-class Reader(ABC):
-    config: dict
-
-    @abstractmethod
-    def read(self, path: PathLike) -> Any:
-        """Read in raw data"""
-
-
-class Writer(ABC):
-    config: dict
+class Reader(Generic[T], Protocol):
+    OutSpec: Type[T]
 
     @abstractmethod
-    def write(self, data: Any, path: PathLike) -> None:
-        """Write raw data to a filesystem"""
+    def run(self) -> T:
+        """Read in data"""
+
+
+class Writer(Protocol):
+    @abstractmethod
+    def run(self, data: Any) -> None:
+        """Write data to a filesystem"""
