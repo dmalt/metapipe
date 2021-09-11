@@ -1,11 +1,9 @@
-fast: pytest_fast flake mypy doctest
+fast: pytest_fast flake mypy
 all: coverage flake mypy doctest
 flake:
 	flake8
 mypy:
 	mypy metapipe/*.py
-doctest:
-	python metapipe/file_processors.py
 coverage:
 	coverage run -m pytest
 	coverage report
