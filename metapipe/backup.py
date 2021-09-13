@@ -24,25 +24,6 @@ def flatten_dir(src_path):
             yield Path(root).resolve() / f
 
 
-opt_backup_dest = {
-    "name": "dest_dir",
-    "short": "t",
-    "long": "dest",
-    "type": str,
-    "default": "../backup",
-    "help": "destination folder",
-}
-
-opt_backup_dryrun = {
-    "name": "dryrun",
-    "short": "n",
-    "long": "dry-run",
-    "type": bool,
-    "default": False,
-    "help": "print actions without really executing them",
-}
-
-
 @dataclass
 class BackupManager:
     src_dir: Path
@@ -60,12 +41,12 @@ class BackupManager:
             dst.parent.mkdir(exist_ok=True, parents=True)
             copy2(src, dst)
 
-    def backup_dirs(self, src, dest):
+    def backup_dir(self, src, dest):
         self._backup_dirs(dircmp(src, dest))
 
     def _backup_dirs(self, dircmp_inst):
-        self._backup_left(dircmp_inst)
-        self._backup_right(dircmp_inst)
+        self._copy_missing(dircmp_inst)
+        self._remove_extra(dircmp_inst)
         self._backup_common(dircmp_inst)
         for subdircmp in dircmp.subdirs.values():
             self._backup_dirs(subdircmp)
@@ -76,7 +57,7 @@ class BackupManager:
             d = self.dest_dir / s.relative_to(self.src_dir)
             self.backup_file(s, d)
 
-    def _backup_right(self, dircmp_inst):
+    def _remove_extra(self, dircmp_inst):
         for f in dircmp_inst.right_only:
             d = Path(dircmp_inst.right) / f
             if d.is_file():
@@ -90,7 +71,7 @@ class BackupManager:
             else:
                 raise ValueError(f"{d} is neither a file nor a directory")
 
-    def _backup_left(self, dircmp_inst):
+    def _copy_missing(self, dircmp_inst):
         for f in dircmp_inst.left_only:
             s = Path(dircmp_inst.left) / f
             d = self.dest_dir / s.relative_to(self.src_dir)
@@ -103,6 +84,25 @@ class BackupManager:
                 copytree(s, d)
             else:
                 raise ValueError(f"{s} is neither a file nor a directory")
+
+
+opt_backup_dest = {
+    "name": "dest_dir",
+    "short": "t",
+    "long": "dest",
+    "type": str,
+    "default": "../backup",
+    "help": "destination folder",
+}
+
+opt_backup_dryrun = {
+    "name": "dryrun",
+    "short": "n",
+    "long": "dry-run",
+    "type": bool,
+    "default": False,
+    "help": "print actions without really executing them",
+}
 
 
 class Backup(DoitCmdBase):
@@ -134,7 +134,7 @@ class Backup(DoitCmdBase):
                 backup_manager.backup_file(src_path, d)
             elif src_path.is_dir():
                 d.mkdir(exist_ok=True, parents=True)
-                backup_manager.backup_dirs(src_path, d)
+                backup_manager.backup_dir(src_path, d)
 
     def _check_tasks(self, selected_tasks):
         tasks = TaskControl(self.task_list).tasks
