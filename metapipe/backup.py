@@ -1,12 +1,23 @@
 import os
 import os.path as op
+from dataclasses import dataclass
+from enum import Enum, auto
 from filecmp import cmp, dircmp
 from pathlib import Path
 from shutil import copy2, copytree, rmtree
-from dataclasses import dataclass
 
 from doit.cmd_base import DoitCmdBase, check_tasks_exist  # type: ignore
 from doit.control import TaskControl  # type: ignore
+
+
+class BackupActions(Enum):
+    COPY_FILE = auto()
+    COPY_DIR = auto()
+    OVERWRITE_FILE = auto()
+    SKIP_FILE = auto()
+    REMOVE_FILE = auto()
+    REMOVE_DIR = auto()
+    ERROR = auto()
 
 
 def get_common_parent(paths):
@@ -18,12 +29,6 @@ def get_common_parent(paths):
     return src
 
 
-def flatten_dir(src_path):
-    for root, dirs, files in os.walk(src_path):
-        for f in files:
-            yield Path(root).resolve() / f
-
-
 @dataclass
 class BackupManager:
     src_dir: Path
@@ -31,58 +36,77 @@ class BackupManager:
     dryrun: bool
 
     def backup_file(self, src, dst, shallow=True):
-        if dst.exists():
-            assert dst.is_file(), f"Destination {dst} is not a file"
+        if dst.is_dir():
+            actions = BackupActions.OVERWRITE_FILE
+            if not self.dryrun:
+                rmtree(dst)
+        elif dst.exists():
             if cmp(src, dst, shallow):
-                print(f"{dst} is uptodate. Skipping.")
-                return
-        print(f"{src} --> {dst}")
+                return BackupActions.SKIP_FILE
+            else:
+                actions = BackupActions.OVERWRITE_FILE
+        else:
+            actions = BackupActions.COPY_FILE
         if not self.dryrun:
             dst.parent.mkdir(exist_ok=True, parents=True)
             copy2(src, dst)
+        return actions
 
-    def backup_dir(self, src, dest):
-        self._backup_dirs(dircmp(src, dest))
+    def backup_dir(self, src, dst):
+        actions = {}
+        if not Path(src).exists():
+            raise FileNotFoundError(f"Source directory {src} doesn't exist")
+        if Path(dst).is_file():
+            actions[(str(src), str(dst))] = BackupActions.OVERWRITE_FILE
+            Path(dst).unlink()
+        if not Path(dst).exists():
+            Path(dst).mkdir()
+        self._backup_dirs(dircmp(src, dst), actions)
+        return actions
 
-    def _backup_dirs(self, dircmp_inst):
-        self._copy_missing(dircmp_inst)
-        self._remove_extra(dircmp_inst)
-        self._backup_common(dircmp_inst)
-        for subdircmp in dircmp.subdirs.values():
-            self._backup_dirs(subdircmp)
+    def _backup_dirs(self, dircmp_inst, actions):
+        self._copy_missing(dircmp_inst, actions)
+        self._remove_extra(dircmp_inst, actions)
+        self._backup_common(dircmp_inst, actions)
+        for subdircmp in dircmp_inst.subdirs.values():
+            self._backup_dirs(subdircmp, actions)
 
-    def _backup_common(self, dircmp_inst):
-        for f in dircmp.common_files:
+    def _backup_common(self, dircmp_inst, actions):
+        for f in dircmp_inst.common_files:
             s = Path(dircmp_inst.left) / f
             d = self.dest_dir / s.relative_to(self.src_dir)
-            self.backup_file(s, d)
+            actions[(str(s), str(d))] = self.backup_file(s, d)
 
-    def _remove_extra(self, dircmp_inst):
+    def _remove_extra(self, dircmp_inst, actions):
         for f in dircmp_inst.right_only:
             d = Path(dircmp_inst.right) / f
             if d.is_file():
-                print(f"Removing file: '{d}'")
+                actions[("", str(d))] = BackupActions.REMOVE_FILE
                 if not self.dryrun:
                     d.unlink()
             elif d.is_dir():
-                print(f"Removing folder: '{d}'")
+                actions[("", str(d))] = BackupActions.REMOVE_DIR
                 if not self.dryrun:
                     rmtree(d)
             else:
+                actions[("", str(d))] = BackupActions.ERROR
                 raise ValueError(f"{d} is neither a file nor a directory")
 
-    def _copy_missing(self, dircmp_inst):
+    def _copy_missing(self, dircmp_inst, actions):
         for f in dircmp_inst.left_only:
             s = Path(dircmp_inst.left) / f
             d = self.dest_dir / s.relative_to(self.src_dir)
             if s.is_file():
-                print(f"{s} --> {d}")
+                actions[(str(s), str(d))] = BackupActions.COPY_FILE
                 if not self.dryrun:
                     d.parent.mkdir(exist_ok=True, parents=True)
                     copy2(s, d)
             elif s.is_dir():
-                copytree(s, d)
+                actions[(str(s), str(d))] = BackupActions.COPY_DIR
+                if not self.dryrun:
+                    copytree(s, d)
             else:
+                actions[(str(s), str(d))] = BackupActions.ERROR
                 raise ValueError(f"{s} is neither a file nor a directory")
 
 
@@ -91,7 +115,7 @@ opt_backup_dest = {
     "short": "t",
     "long": "dest",
     "type": str,
-    "default": "../backup",
+    "default": "./backup",
     "help": "destination folder",
 }
 
@@ -124,7 +148,6 @@ class Backup(DoitCmdBase):
         if not backup_paths:
             return
         src_dir = get_common_parent(backup_paths)
-        print(backup_paths)
 
         backup_manager = BackupManager(src_dir, dest_dir, dryrun)
 
