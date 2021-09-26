@@ -1,8 +1,9 @@
 from dataclasses import dataclass
 from os import PathLike
 from typing import NamedTuple
+from unittest.mock import MagicMock
 
-from mne.io import BaseRaw, read_raw_fif
+from mne.io import BaseRaw, read_raw_fif  # type: ignore
 from pytest import fixture, raises
 
 from metapipe.abc import Processor, Writer, Reader
@@ -14,13 +15,13 @@ from metapipe.observer import (
     ObservableNode,
     Observer,
 )
-from metapipe.tests.test_processors import simple_raw_factory, tmp_raw_savepath, saved_fif_fpath_and_object  # noqa
+from metapipe.tests.test_processors import simple_raw_factory, tmp_raw_savepath, saved_fif_fpath_and_object  #type: ignore # noqa
 
 # from metapipe.tests.
 
 
 def test_observer_updates_consuming_on_update():
-    obs = Observer(update_hook=lambda: None)
+    obs = Observer(callback=lambda: None)
     test_val = True
     obs.update("test", test_val)
     assert obs.consuming["test"] == test_val
@@ -41,14 +42,14 @@ def test_observer_calls_update_hook_on_update():
 
 def test_observable_contains_registered_observer():
     observable = Observable()
-    observer = Observer(update_hook=lambda: None)
+    observer = Observer(callback=lambda: None)
     observable.register(observer, "test", "test")
     assert observer in observable.observers
 
 
 def test_observable_doesnt_contain_observer_after_unregister():
     observable = Observable()
-    observer = Observer(update_hook=lambda: None)
+    observer = Observer(callback=lambda: None)
     observable.register(observer, "test", "test")
     observable.unregister(observer)
     assert observer not in observable.observers
@@ -56,11 +57,10 @@ def test_observable_doesnt_contain_observer_after_unregister():
 
 def test_observable_notifies_registered_observers():
     observable = Observable()
-    observer = Observer(update_hook=lambda: None)
+    observer = Observer(callback=lambda: None)
     what, where = "sent", "received"
     observable.register(observer, what, where)
-    observable.providing[what] = 42
-    observable.notify_observers()
+    observable.notify_observers({what: 42})
     assert observer.consuming[where] == 42
 
 
@@ -128,12 +128,13 @@ def test_node_proc_runs_only_when_ready(
     mock_processor, simple_raw_factory  # noqa
 ):
     node = NodeProc(mock_processor)
+    node._observable.notify_observers = MagicMock()
     node.run()
-    assert "raw" not in node._observable.providing
+    node._observable.notify_observers.assert_not_called()
     raw = simple_raw_factory(1, 200)
     node._observer.consuming["raw"] = raw
     node.run()
-    assert "raw" in node._observable.providing
+    node._observable.notify_observers.assert_called_once()
 
 
 def test_node_proc_triggers_observers_run(
@@ -144,9 +145,10 @@ def test_node_proc_triggers_observers_run(
     raw = simple_raw_factory(1, 200)
     node1._observer.consuming["raw"] = raw
     node1.attach(node2, "raw", "raw")
-    assert "raw" not in node2._observable.providing
+    node2._observable.notify_observers = MagicMock()
+    node2._observable.notify_observers.assert_not_called()
     node1.run()
-    assert "raw" in node2._observable.providing
+    node2._observable.notify_observers.assert_called_once()
 
 
 @fixture
@@ -194,6 +196,7 @@ def test_node_in_triggers_observers_run(
     node1 = NodeIn(mock_reader(saved_fif_fpath_and_object[0]))
     node2 = NodeProc(mock_processor)
     node1.attach(node2, "raw", "raw")
-    assert "raw" not in node2._observable.providing
+    node2._observable.notify_observers = MagicMock()
+    node2._observable.notify_observers.assert_not_called()
     node1.run()
-    assert "raw" in node2._observable.providing
+    node2._observable.notify_observers.assert_called_once()

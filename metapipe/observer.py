@@ -7,17 +7,16 @@ from inspect import signature
 
 @dataclass
 class Observer:
-    update_hook: Callable[[], None]
+    callback: Callable[[], None]
     consuming: Dict[str, object] = field(default_factory=dict)
 
     def update(self, key: str, value: Any) -> None:
         self.consuming[key] = value
-        self.update_hook()
+        self.callback()
 
 
 @dataclass
 class Observable:
-    providing: Dict[str, object] = field(default_factory=dict)
     _observers: List[Tuple[Observer, str, str]] = field(
         init=False, repr=False, default_factory=list
     )
@@ -28,9 +27,9 @@ class Observable:
     def unregister(self, observer: Observer) -> None:
         self._observers = [o for o in self._observers if o[0] != observer]
 
-    def notify_observers(self) -> None:
+    def notify_observers(self, providing: Dict) -> None:
         for obs, what, where in self._observers:
-            obs.update(where, self.providing[what])
+            obs.update(where, providing[what])
 
     @property
     def observers(self):
@@ -63,17 +62,15 @@ class NodeProc(ObservableNode):
     _observer: Observer = field(init=False, repr=False)
 
     def __post_init__(self):
-        self._observer = Observer(update_hook=self.run)
+        self._observer = Observer(callback=self.run)
 
     def run(self) -> None:
-        print("running")
         try:
-            self._observable.providing.update(
-                self.processor.run(**self._observer.consuming)._asdict()
-            )
+            res = self.processor.run(**self._observer.consuming)._asdict()
+            self._observable.notify_observers(res)
+            self._observer.consuming = {}
         except TypeError:
-            return
-        self._observable.notify_observers()
+            pass
 
 
 @dataclass
@@ -82,11 +79,12 @@ class NodeOut:
     _observer: Observer = field(init=False, repr=False)
 
     def __post_init__(self):
-        self._observer = Observer(update_hook=self.run)
+        self._observer = Observer(callback=self.run)
 
     def run(self) -> None:
         try:
             self.processor.run(**self._observer.consuming)
+            self._observer.consuming = {}
         except TypeError:
             pass
 
@@ -99,5 +97,5 @@ class NodeIn(ObservableNode):
     )
 
     def run(self) -> None:
-        self._observable.providing.update(self.processor.run()._asdict())
-        self._observable.notify_observers()
+        res = self.processor.run()._asdict()
+        self._observable.notify_observers(res)
