@@ -5,6 +5,7 @@
 
 Welcome to metapipe's documentation!
 ====================================
+Test
 
 .. toctree::
    :maxdepth: 2
@@ -12,8 +13,8 @@ Welcome to metapipe's documentation!
 
 
 
-Indices and tables
-==================
+Indices and tables and test
+===========================
 
 * :ref:`genindex`
 * :ref:`modindex`
