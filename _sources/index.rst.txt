@@ -5,7 +5,6 @@
 
 Welcome to metapipe's documentation!
 ====================================
-Test
 
 .. toctree::
    :maxdepth: 2
