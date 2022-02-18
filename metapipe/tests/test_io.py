@@ -4,7 +4,7 @@ from mne import Report  # type: ignore
 from mne.io import read_raw_fif  # type: ignore
 from mne.preprocessing import ICA  # type: ignore
 from numpy.testing import assert_allclose  # type: ignore
-from sklearn.exceptions import ConvergenceWarning  # type: ignore
+
 
 from metapipe.io import (
     RawFifReader,
@@ -46,14 +46,12 @@ def ica_path(tmp_path, ica):  # noqa
 
 
 @mark.slow
-@mark.filterwarnings("ignore", category=ConvergenceWarning)
 def test_ica_reader_returns_ICA_obj(ica_path):
     node = IcaReader(ica_path)
     result = node.run()
     assert isinstance(result.ica, ICA)
 
 
-@mark.filterwarnings("ignore", category=ConvergenceWarning)
 def test_ica_writer(ica, tmp_path):  # noqa
     savepath = tmp_path / "writer_test_ica.fif"
     node = IcaWriter(savepath)

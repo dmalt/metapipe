@@ -17,8 +17,6 @@ from metapipe.observer import (
 )
 from metapipe.tests.test_processors import simple_raw_factory, tmp_raw_savepath, saved_fif_fpath_and_object  #type: ignore # noqa
 
-# from metapipe.tests.
-
 
 def test_observer_updates_consuming_on_update():
     obs = Observer(callback=lambda: None)

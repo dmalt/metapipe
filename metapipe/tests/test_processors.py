@@ -6,7 +6,6 @@ from mne.preprocessing import ICA  # type: ignore
 from mne import Annotations, read_annotations  # type: ignore
 import numpy as np  # type: ignore
 from numpy.testing import assert_allclose  # type: ignore
-from sklearn.exceptions import ConvergenceWarning  # type: ignore
 
 from metapipe.processors import (
     Filter,
@@ -95,7 +94,6 @@ def test_resample(simple_raw_factory):
     assert result.mne_container.info["sfreq"] == 150
 
 
-@mark.filterwarnings("ignore", category=ConvergenceWarning)
 def test_ica_computer_fits_ica(simple_raw_factory):  # noqa
     raw = simple_raw_factory(4, 200)
     raw.filter(l_freq=1, h_freq=None)
@@ -107,7 +105,6 @@ def test_ica_computer_fits_ica(simple_raw_factory):  # noqa
 
 
 @fixture
-@mark.filterwarnings("ignore", category=ConvergenceWarning)
 def ica(simple_raw_factory):
     raw = simple_raw_factory(4, 300)
     raw.filter(l_freq=1, h_freq=None)
@@ -117,7 +114,6 @@ def ica(simple_raw_factory):
 
 
 @mark.slow
-@mark.filterwarnings("ignore", category=ConvergenceWarning)
 def test_ica_report_maker(ica):
     node = IcaReportMaker()
     result = node.run(ica)
