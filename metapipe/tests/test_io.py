@@ -12,7 +12,6 @@ from metapipe.io import (
     IcaReader,
     IcaWriter,
     ReportWriter,
-    RawAnnotator,
 )
 from metapipe.tests.test_processors import (  # type: ignore  # noqa
     saved_fif_fpath_and_object,  # noqa
