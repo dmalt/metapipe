@@ -1,20 +1,13 @@
-from pytest import fixture, mark  # type: ignore
-
 import mne  # type: ignore
+import numpy as np  # type: ignore
+from mne import Annotations, read_annotations  # type: ignore
 from mne.channels import make_standard_montage  # type: ignore
 from mne.preprocessing import ICA  # type: ignore
-from mne import Annotations, read_annotations  # type: ignore
-import numpy as np  # type: ignore
 from numpy.testing import assert_allclose  # type: ignore
+from pytest import fixture, mark  # type: ignore
 
-from metapipe.processors import (
-    Filter,
-    RawsCat,
-    Resampler,
-    IcaComputer,
-    IcaReportMaker,
-    AnnotSetter,
-)
+from metapipe.processors import (Filter, IcaComputer, IcaReportMaker,
+                                 Resampler, concatenate_raws, set_annotations)
 
 
 @fixture
@@ -53,55 +46,50 @@ def tmp_raw_savepath(tmp_path):
 
 def test_band_pass_filter_filters_data(simple_raw_factory):
     raw = simple_raw_factory(4, 300)
-    filt = Filter()
-    filt.config["l_freq"], filt.config["h_freq"] = lf, hf = 1, 50
+    lf, hf = 1, 50
+    filt = Filter(l_freq=lf, h_freq=hf)
     raw_filt = filt.run(raw)
-    assert raw_filt.mne_container.info["highpass"] == lf
-    assert raw_filt.mne_container.info["lowpass"] == hf
+    assert raw_filt.info["highpass"] == lf
+    assert raw_filt.info["lowpass"] == hf
 
 
 def test_concat_with_same_channels(simple_raw_factory):
     raw = simple_raw_factory(1, 300)
     orig = raw.copy()
-    cat = RawsCat()
-    res = cat.run(raw, raw)
-    assert res.cat_raws.n_times == orig.n_times * 2
-    assert len(res.cat_raws.ch_names) == len(raw.ch_names)
+    cat_raws = concatenate_raws(raw, raw)
+    assert cat_raws.n_times == orig.n_times * 2
+    assert len(cat_raws.ch_names) == len(raw.ch_names)
 
 
 def test_concat_single_object(simple_raw_factory):
     raw = simple_raw_factory(1, 300)
-    cat = RawsCat()
-    res = cat.run(raw)
-    assert_allclose(res.cat_raws.get_data(), raw.get_data())
+    cat_raws = concatenate_raws(raw)
+    assert_allclose(cat_raws.get_data(), raw.get_data())
 
 
 def test_cat_with_different_channels_intersects_channels(simple_raw_factory):
     raw1 = simple_raw_factory(1, 300, "biosemi32")
     raw2 = simple_raw_factory(1, 300, "biosemi16")
-    cat = RawsCat()
-    res = cat.run(raw1.copy(), raw2.copy())
-    assert res.cat_raws.n_times == raw1.n_times + raw2.n_times
-    assert len(res.cat_raws.ch_names) == len(raw2.ch_names)
-    assert set(res.cat_raws.ch_names) == set(raw2.ch_names)
+    raw_cat = concatenate_raws(raw1.copy(), raw2.copy())
+    assert raw_cat.n_times == raw1.n_times + raw2.n_times
+    assert len(raw_cat.ch_names) == len(raw2.ch_names)
+    assert set(raw_cat.ch_names) == set(raw2.ch_names)
 
 
 def test_resample(simple_raw_factory):
     raw = simple_raw_factory(1, 300)
-    resamp = Resampler()
-    resamp.config["sfreq"] = 150
-    result = resamp.run(raw)
-    assert result.mne_container.info["sfreq"] == 150
+    resamp = Resampler(sfreq=150)
+    raw_resamp = resamp.run(raw)
+    assert raw_resamp.info["sfreq"] == 150
 
 
 def test_ica_computer_fits_ica(simple_raw_factory):  # noqa
     raw = simple_raw_factory(4, 200)
     raw.filter(l_freq=1, h_freq=None)
 
-    ica_computer = IcaComputer()
-    ica_computer.config["ICA"]["max_iter"] = 100
-    result = ica_computer.run(raw)
-    assert hasattr(result.ica, "n_components_")
+    ica_computer = IcaComputer(max_iter=100)
+    ica = ica_computer.run(raw)
+    assert hasattr(ica, "n_components_")
 
 
 @fixture
@@ -116,8 +104,8 @@ def ica(simple_raw_factory):
 @mark.slow
 def test_ica_report_maker(ica):
     node = IcaReportMaker()
-    result = node.run(ica)
-    assert result.report.sections == [node.config["section"]]
+    report = node.run(ica)
+    assert report.sections == (node.section,)
 
 
 @fixture
@@ -133,8 +121,7 @@ def annot_path(tmp_path):
 
 
 def test_annot_setter(annot_path, simple_raw_factory):
-    node = AnnotSetter(annot_path)
     raw = simple_raw_factory(1, 100)
-    result = node.run(raw)
+    result = set_annotations(annot_path, raw)
     annots = read_annotations(annot_path)
-    assert result.raw.annotations == annots
+    assert result.annotations == annots

@@ -8,6 +8,9 @@ authors = ["Dmitrii Altukhov <dm.altukhov@ya.ru>"]
 python = "^3.9"
 mne = "^0.24.1"
 mne-bids = "^0.9"
+scikit-learn = "^1.0.2"
+python-picard = "^0.7"
+matplotlib = "^3.5.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.0.1"

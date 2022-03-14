@@ -1,45 +1,35 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from os import PathLike
-from typing import NamedTuple
+from typing import Optional
 
-from mne import Report, Annotations  # type: ignore
-from mne.io import Raw, read_raw_fif, read_raw_brainvision, BaseRaw  # type: ignore # noqa
-from mne.preprocessing import ICA, read_ica  # type: ignore
+import mne  # type: ignore
+from mne import Report  # type: ignore
+from mne.io import (BaseRaw, Raw, read_raw_brainvision,  # type: ignore # noqa
+                    read_raw_fif)
 
-from metapipe.abc import Reader, Writer, MneContainer
+from metapipe.abc import MneContainer, Reader, Writer
 
 
 @dataclass
 class RawFifReader(Reader):
-    class OutSpec(NamedTuple):
-        raw: Raw
+    preload: bool = True
 
-    path: PathLike
-    config: dict = field(default_factory=lambda: dict(preload=True))
-
-    def run(self) -> OutSpec:
-        return self.OutSpec(read_raw_fif(self.path, **self.config))
+    def run(self, path: PathLike) -> mne.io.Raw:
+        return read_raw_fif(path, preload=self.preload)
 
 
 @dataclass
 class BrainvisionReader(Reader):
-    class OutSpec(NamedTuple):
-        raw: Raw
+    preload: bool = True
 
-    path: PathLike
-    config: dict = field(default_factory=lambda: dict(preload=True))
-
-    def run(self) -> OutSpec:
-        return self.OutSpec(read_raw_brainvision(self.path, **self.config))  # pragma: no cover # noqa
+    def run(self, path: PathLike) -> mne.io.Raw:
+        return read_raw_brainvision(path, preload=self.preload)
 
 
-@dataclass
 class MneWriter(Writer):
-    path: PathLike
-    config: dict = field(default_factory=dict)
-
-    def run(self, raw: MneContainer) -> None:
-        raw.save(self.path, **self.config)
+    """Write mne container"""
+    def run(self, savepath: PathLike, raw: MneContainer) -> None:
+        raw.save(savepath)
 
 
 class MneBidsWriter(Writer):
@@ -50,49 +40,47 @@ class MneBidsWriter(Writer):
 
 @dataclass
 class IcaReader(Reader):
-    class OutSpec(NamedTuple):
-        ica: ICA
+    """Read ICA solution"""
+    verbose: Optional[str] = None
 
-    path: PathLike
-    config: dict = field(default_factory=lambda: {"verbose": None})
-
-    def run(self) -> OutSpec:
-        return self.OutSpec(read_ica(self.path, **self.config))
+    def run(self, path: PathLike) -> mne.preprocessing.ICA:
+        return mne.preprocessing.read_ica(path, verbose=self.verbose)
 
 
 @dataclass
 class IcaWriter(Writer):
-    path: PathLike
-    config: dict = field(default_factory=lambda: {"verbose": None})
+    """Write ICA solution"""
+    verbose: Optional[str] = None
 
-    def run(self, ica: ICA) -> None:
-        ica.save(self.path, **self.config)
+    def run(self, savepath: PathLike, ica: mne.preprocessing.ICA) -> None:
+        ica.save(savepath, verbose=self.verbose)
 
 
 @dataclass
 class ReportWriter(Writer):
-    path: PathLike
-    config: dict = field(
-        default_factory=lambda: {"overwrite": True, "open_browser": False}
-    )
+    """Write mne report"""
+    overwrite: bool = True
+    open_browser: bool = False
 
-    def run(self, report: Report) -> None:
-        report.save(self.path, **self.config)
+    def run(self, savepath: PathLike, report: Report) -> None:
+        report.save(
+            savepath, overwrite=self.overwrite, open_browser=self.open_browser
+        )
 
 
 @dataclass
 class RawAnnotator(Writer):
-    path: PathLike
-    config: dict = field(
-        default_factory=lambda: dict(
-            plot=dict(block=True, lowpass=100, n_channels=102),
-            pick_types=None,
-            save=dict(overwrite=True),
-        )
-    )
+    """Visually annotate raw file and save annotations"""
+    block: bool = True
+    lowpass: float = 100
+    n_channels: int = 102
+    pick_types: Optional[str] = None
+    overwrite: bool = True
 
-    def run(self, raw_check: BaseRaw) -> Annotations:
-        if self.config["pick_types"] is not None:
-            raw_check.pick_types(**self.config["pick_types"])
-        raw_check.plot(**self.config["plot"])
-        raw_check.annotations.save(self.path, **self.config["save"])
+    def run(self, savepath: PathLike, raw_check: BaseRaw) -> None:
+        if self.pick_types is not None:
+            raw_check.pick_types(self.pick_types)
+        raw_check.plot(
+            block=self.block, lowpass=self.lowpass, n_channels=self.n_channels
+        )
+        raw_check.annotations.save(savepath, overwrite=self.overwrite)
